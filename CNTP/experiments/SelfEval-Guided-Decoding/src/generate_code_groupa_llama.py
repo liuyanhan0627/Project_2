@@ -196,8 +196,7 @@ if __name__ == "__main__":
 
                 result_counter = Counter()
                 for code in results:
-                    ans = safe_execute(code)
-                    ans = floatify_ans(ans)
+                    ans = extract_prediction_from_generation(args.dt_name, code)
                     if ans is not None:
                         result_counter.update([ans])
 

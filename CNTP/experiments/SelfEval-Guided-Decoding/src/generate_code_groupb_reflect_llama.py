@@ -112,10 +112,11 @@ def generate_text(model, tokenizer, prompt, max_new_tokens, temperature, top_p):
     return tokenizer.decode(gen_ids, skip_special_tokens=True), int(gen_ids.numel())
 
 
-def reflection_prompt(full_prompt, first_solution, dt_name, reasoning_type):
+def reflection_prompt(question_text, first_solution, dt_name, reasoning_type):
     if reasoning_type in ["arithmetic", "symbolic", "algorithmic"]:
         return (
-            f"{full_prompt}{first_solution}\n\n"
+            f"Question:\n{question_text}\n\n"
+            f"Attempted Python solution:\n{first_solution}\n\n"
             "# Review the attempted Python solution above. If it is correct, keep it. "
             "If it has any calculation, logic, or formatting mistake, discard it and restart once.\n"
             "# Return exactly in this format:\n"
@@ -124,7 +125,8 @@ def reflection_prompt(full_prompt, first_solution, dt_name, reasoning_type):
             "# <final Python solution only>\n"
         )
     return (
-        f"{full_prompt}{first_solution}\n\n"
+        f"Question:\n{question_text}\n\n"
+        f"Attempted reasoning:\n{first_solution}\n\n"
         "Review the attempted reasoning above. If it is correct, keep it. "
         "If it has a factual, logical, or answer-format mistake, discard it and restart once.\n"
         "Return exactly in this format:\n"
@@ -161,43 +163,7 @@ def parse_reflection_output(text):
 
 
 def extract_prediction(dt_name, generated_text):
-    if dt_name in ["strategyqa", "sports"]:
-        ans = [x for x in generated_text.strip().split("\n") if regex.search(r" answer.* is ", x)]
-        if not len(ans):
-            ans = generated_text.strip().split("\n")[-1:]
-        prd = [
-            x.strip(string.punctuation)
-            for r in ans[:1]
-            for x in r.split("answer")[-1].split()
-            if x.strip(string.punctuation) in ["yes", "no"]
-        ]
-        if prd.count("yes") and prd.count("no"):
-            return None if " neither " in ans[0] else prd[0]
-        if prd.count("yes"):
-            return "yes"
-        if prd.count("no"):
-            return "no"
-        return None
-
-    if dt_name in ["gsm8k_cot"]:
-        ans = generated_text.strip().split("\n")[-1].replace("So the answer is ", "")
-        prd = [x[0] for x in regex.finditer(r"[\d\.,]+", ans) if regex.search(r"\d", x[0])]
-        if len(prd) > 2:
-            prd = prd[-1]
-        elif len(prd):
-            prd = prd[0]
-        else:
-            return None
-        try:
-            return float(prd.replace(",", "").rstrip("."))
-        except Exception:
-            return None
-
-    exe_rst = safe_execute(generated_text)
-    prd = floatify_ans(exe_rst)
-    if type(prd) not in [float, int, bool, str, dict, set, list, tuple]:
-        prd = floatify_ans(simplify_ans(exe_rst))
-    return prd
+    return extract_prediction_from_generation(dt_name, generated_text)
 
 
 def model_tag(name):
@@ -266,7 +232,9 @@ if __name__ == "__main__":
             first_solution, first_tokens = generate_text(
                 model, tokenizer, full_prompt, args.max_tokens, args.temperature, args.top_p
             )
-            review_prompt = reflection_prompt(full_prompt, first_solution, args.dt_name, args.prompts["type"])
+            review_prompt = reflection_prompt(
+                exp.get("question", ""), first_solution, args.dt_name, args.prompts["type"]
+            )
             reflection_output, reflection_tokens = generate_text(
                 model, tokenizer, review_prompt, args.max_reflection_tokens, args.temperature, args.top_p
             )

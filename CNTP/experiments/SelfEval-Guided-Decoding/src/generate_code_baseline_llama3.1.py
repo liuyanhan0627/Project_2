@@ -231,11 +231,7 @@ if __name__ == "__main__":
         if len(batch) == 1:
             result_counter = Counter()
             for code in results:
-                # print(f"code: {code}")
-                ans = safe_execute(code)
-                # print(f"ans: {ans}")
-                ans = floatify_ans(ans)
-                # print(f"floatified ans: {ans}")
+                ans = extract_prediction_from_generation(args.dt_name, code)
                 print(f"ans: {ans}")
                 if ans is not None:
                     result_counter.update([ans])
@@ -260,8 +256,7 @@ if __name__ == "__main__":
         else:
             for rst, exp in zip(results, batch):
                 code = rst
-                ans = safe_execute(code)
-                prediction = floatify_ans(ans)
+                prediction = extract_prediction_from_generation(args.dt_name, code)
                 gt_ans = exp.get('answer', None)
                 if finqa_equal(prediction, gt_ans, False):
                     correct += 1

@@ -183,6 +183,58 @@ def floatify_ans(ans):
     return ans
 
 
+def _as_generation_text(generated_text):
+    if isinstance(generated_text, list):
+        return '\n'.join(str(x) for x in generated_text)
+    return str(generated_text)
+
+
+def extract_prediction_from_generation(dt_name, generated_text):
+    text = _as_generation_text(generated_text)
+
+    if dt_name in ['strategyqa', 'sports']:
+        marked = regex.findall(r'(?:ANSWER\s*:|So the answer is)\s*(yes|no)\b', text, flags=regex.I)
+        if marked:
+            return marked[-1].lower()
+
+        ans_lines = [x for x in text.strip().split('\n') if regex.search(r'answer.* is ', x, flags=regex.I)]
+        if not len(ans_lines):
+            ans_lines = text.strip().split('\n')[-1:]
+        prd = [
+            x.strip(string.punctuation).lower()
+            for r in ans_lines[-1:]
+            for x in regex.split(r'answer', r, flags=regex.I)[-1].split()
+            if x.strip(string.punctuation).lower() in ['yes', 'no']
+        ]
+        if prd.count('yes') and prd.count('no'):
+            return None if ' neither ' in ans_lines[-1].lower() else prd[-1]
+        if prd.count('yes'):
+            return 'yes'
+        if prd.count('no'):
+            return 'no'
+        return None
+
+    if dt_name in ['gsm8k_cot']:
+        ans = text.strip().split('\n')[-1].replace('So the answer is ', '')
+        prd = [x[0] for x in regex.finditer(r'[\d\.,]+', ans) if regex.search(r'\d', x[0])]
+        if len(prd) > 2:
+            prd = prd[-1]
+        elif len(prd):
+            prd = prd[0]
+        else:
+            return None
+        try:
+            return float(prd.replace(',', '').rstrip('.'))
+        except Exception:
+            return None
+
+    exe_rst = safe_execute(text)
+    prd = floatify_ans(exe_rst)
+    if type(prd) not in [float, int, bool, str, dict, set, list, tuple]:
+        prd = floatify_ans(simplify_ans(exe_rst))
+    return prd
+
+
 def solve_it(equation, variable):
     solution = solve(equation, variable, dict=True)
     if not solution:
@@ -462,4 +514,3 @@ def load_llama_model_and_tokenizer(model_name, auth_token):
         device_map='auto',
     )
     return model, tokenizer
-

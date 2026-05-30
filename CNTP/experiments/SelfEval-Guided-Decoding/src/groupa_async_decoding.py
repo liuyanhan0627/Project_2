@@ -121,38 +121,50 @@ class GroupAAsyncDecoder:
 
     @torch.no_grad()
     def _draft_paths(self, trigger_text: str) -> List[Dict]:
-        paths = []
+        candidate_count = max(1, self.config.draft_candidates)
         base = self.small_tokenizer(trigger_text, return_tensors="pt").to(self.small_device)
-        for _ in range(self.config.draft_candidates):
-            input_ids = base.input_ids.clone()
-            attention_mask = base.attention_mask.clone()
-            outputs = self.small_model(input_ids=input_ids, attention_mask=attention_mask, use_cache=True)
+        input_ids = base.input_ids.repeat(candidate_count, 1)
+        attention_mask = base.attention_mask.repeat(candidate_count, 1)
+        outputs = self.small_model(input_ids=input_ids, attention_mask=attention_mask, use_cache=True)
+        past = outputs.past_key_values
+        next_logits = outputs.logits[:, -1, :]
+        draft_tokens = [[] for _ in range(candidate_count)]
+        active = torch.ones(candidate_count, dtype=torch.bool, device=self.small_device)
+        eos_id = self.small_tokenizer.eos_token_id
+
+        for _step in range(self.config.max_draft_tokens):
+            next_token = self._select_token(next_logits, self.config.small_temperature, self.config.small_top_p)
+            step_input = next_token.clone()
+            for row, token_id in enumerate(next_token.tolist()):
+                if not bool(active[row].item()):
+                    step_input[row] = eos_id
+                    continue
+                draft_tokens[row].append(int(token_id))
+                if token_id in self.small_punctuation_ids or token_id == eos_id:
+                    active[row] = False
+            if not bool(active.any().item()):
+                break
+
+            step_input = step_input[:, None]
+            step_attention = torch.ones(
+                (candidate_count, input_ids.shape[1] + 1),
+                dtype=torch.long,
+                device=self.small_device,
+            )
+            outputs = self.small_model(
+                input_ids=step_input,
+                attention_mask=step_attention,
+                past_key_values=past,
+                use_cache=True,
+            )
             past = outputs.past_key_values
             next_logits = outputs.logits[:, -1, :]
-            draft_tokens = []
+            input_ids = torch.cat([input_ids, step_input], dim=-1)
 
-            for _step in range(self.config.max_draft_tokens):
-                next_token = self._select_token(
-                    next_logits, self.config.small_temperature, self.config.small_top_p
-                )
-                token_id = int(next_token.item())
-                draft_tokens.append(token_id)
-                step_input = next_token[:, None]
-                step_attention = torch.ones((1, input_ids.shape[1] + 1), dtype=torch.long, device=self.small_device)
-                outputs = self.small_model(
-                    input_ids=step_input,
-                    attention_mask=step_attention,
-                    past_key_values=past,
-                    use_cache=True,
-                )
-                past = outputs.past_key_values
-                next_logits = outputs.logits[:, -1, :]
-                input_ids = torch.cat([input_ids, step_input], dim=-1)
-                if token_id in self.small_punctuation_ids or token_id == self.small_tokenizer.eos_token_id:
-                    break
-
-            text = self._decode_text(self.small_tokenizer, draft_tokens)
-            paths.append({"text": text, "small_token_ids": draft_tokens})
+        paths = []
+        for tokens in draft_tokens:
+            text = self._decode_text(self.small_tokenizer, tokens)
+            paths.append({"text": text, "small_token_ids": tokens})
         return paths
 
     @torch.no_grad()
