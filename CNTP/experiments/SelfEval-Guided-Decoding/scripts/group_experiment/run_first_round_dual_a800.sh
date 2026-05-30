@@ -50,6 +50,7 @@ run_one_dataset() {
     --draft_candidates 3 \
     --max_draft_tokens 128 \
     --max_fallback_tokens 128 \
+    --disable_prefix_cache_verify \
     --big_temperature 0.0 \
     --small_temperature 0.7 \
     --small_top_p 0.9 \
