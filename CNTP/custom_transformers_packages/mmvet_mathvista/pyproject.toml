@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "transformers" 
-version = "4.47.0.cntp"
+version = "4.47.0+cntp"
 description = "Modified Hugging Face Transformers v4.47.0 for MMVet and MathVista experiments with CNTP implementation"
 authors = [{ name = "Yizhou Wang", email = "wyzjack990122@email.com" }]
 license = { file = "LICENSE" }
