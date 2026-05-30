@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.DS_Store
+.ipynb_checkpoints/
+CNTP/experiments/SelfEval-Guided-Decoding/outputs/
+CNTP/experiments/open-instruct/outputs/
+CNTP/experiments/VLMEvalKit/outputs/
