@@ -122,6 +122,13 @@ def prompt_the_result(model, tokenizer, prompts, attn_masks, generation_config, 
     return {'choices': results}
 
 
+def assert_standard_decoding(generation_config):
+    cntp_flags = ("cntp_perplexity", "cntp_same_num_trials", "cntp_negatively_correlated")
+    enabled = [flag for flag in cntp_flags if getattr(generation_config, flag, False)]
+    if enabled:
+        raise RuntimeError(f"Baseline must use standard decoding; enabled CNTP flags: {enabled}")
+
+
 if __name__ == "__main__":
 
     args = parse_args()
@@ -197,6 +204,7 @@ if __name__ == "__main__":
         entropy_threshold_low=args.entropy_threshold_low,
         entropy_threshold_high=args.entropy_threshold_high,
     )
+    assert_standard_decoding(generation_config)
     
     if args.reverse:
         inputs = inputs[::-1]

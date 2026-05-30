@@ -248,6 +248,7 @@ if __name__ == "__main__":
         stop_strings = '\n\n\n',
         entropy_threshold_low=args.entropy_threshold_low,
         entropy_threshold_high=args.entropy_threshold_high,
+        cntp_perplexity=True,
     )
     
     correct, wrong = 0, 0

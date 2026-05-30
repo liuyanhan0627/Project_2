@@ -43,6 +43,7 @@ run_one_dataset() {
     --max_tokens "${max_tokens}" \
     --big_model_name "${BIG_MODEL}" \
     --small_model_name "${SMALL_MODEL}" \
+    --auth_token "${HF_TOKEN}" \
     --big_device cuda:0 \
     --small_device cuda:1 \
     --entropy_threshold 1.5 \

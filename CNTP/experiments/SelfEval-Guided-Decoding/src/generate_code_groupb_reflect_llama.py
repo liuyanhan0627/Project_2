@@ -1,6 +1,6 @@
 import argparse
 import os
-import time
+import time as _time
 from datetime import datetime
 
 import torch
@@ -81,6 +81,13 @@ def load_model_and_tokenizer(model_name, auth_token, device):
     return model, tokenizer
 
 
+def assert_standard_decoding(generation_config):
+    cntp_flags = ("cntp_perplexity", "cntp_same_num_trials", "cntp_negatively_correlated")
+    enabled = [flag for flag in cntp_flags if getattr(generation_config, flag, False)]
+    if enabled:
+        raise RuntimeError(f"Group B must use standard decoding; enabled CNTP flags: {enabled}")
+
+
 @torch.no_grad()
 def generate_text(model, tokenizer, prompt, max_new_tokens, temperature, top_p):
     inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
@@ -94,6 +101,7 @@ def generate_text(model, tokenizer, prompt, max_new_tokens, temperature, top_p):
         pad_token_id=tokenizer.pad_token_id,
         stop_strings="\n\n\n",
     )
+    assert_standard_decoding(generation_config)
     outputs = model.generate(
         input_ids=inputs.input_ids,
         attention_mask=inputs.attention_mask,
@@ -254,7 +262,7 @@ if __name__ == "__main__":
                 print("======================")
                 print(f'Index: {exp["index"]}\nQuestion: {exp.get("question", "")}')
 
-            start_time = time.time()
+            start_time = _time.time()
             first_solution, first_tokens = generate_text(
                 model, tokenizer, full_prompt, args.max_tokens, args.temperature, args.top_p
             )
@@ -286,7 +294,7 @@ if __name__ == "__main__":
                         "should_restart": should_restart,
                         "first_solution_tokens": first_tokens,
                         "reflection_tokens": reflection_tokens,
-                        "wall_time": time.time() - start_time,
+                        "wall_time": _time.time() - start_time,
                     },
                 }
             )

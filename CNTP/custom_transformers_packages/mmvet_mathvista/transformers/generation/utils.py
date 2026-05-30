@@ -2253,21 +2253,32 @@ class GenerationMixin:
                 **model_kwargs,
             )
 
-            # 12. run sample (it degenerates to greedy search when `generation_config.do_sample=False`)
-            # modify the name from _sample to _sample_reflect by yizhou
-            result = self._sample_reflect_perplexity(
-                input_ids,
-                logits_processor=prepared_logits_processor,
-                stopping_criteria=prepared_stopping_criteria,
-                generation_config=generation_config,
-                synced_gpus=synced_gpus,
-                streamer=streamer,
-                tokenizer=tokenizer, # yizhou
-                entropy_threshold_low=entropy_threshold_low, # yizhou
-                entropy_threshold_high=entropy_threshold_high, # yizhou
-                max_trials=max_trials, # yizhou
-                **model_kwargs,
-            )
+            # 12. run standard sample/greedy by default. CNTP-style
+            # multi-trial decoding must be requested explicitly.
+            if getattr(generation_config, "cntp_perplexity", False):
+                result = self._sample_reflect_perplexity(
+                    input_ids,
+                    logits_processor=prepared_logits_processor,
+                    stopping_criteria=prepared_stopping_criteria,
+                    generation_config=generation_config,
+                    synced_gpus=synced_gpus,
+                    streamer=streamer,
+                    tokenizer=tokenizer, # yizhou
+                    entropy_threshold_low=entropy_threshold_low, # yizhou
+                    entropy_threshold_high=entropy_threshold_high, # yizhou
+                    max_trials=max_trials, # yizhou
+                    **model_kwargs,
+                )
+            else:
+                result = self._sample(
+                    input_ids,
+                    logits_processor=prepared_logits_processor,
+                    stopping_criteria=prepared_stopping_criteria,
+                    generation_config=generation_config,
+                    synced_gpus=synced_gpus,
+                    streamer=streamer,
+                    **model_kwargs,
+                )
 
         elif generation_mode in (GenerationMode.BEAM_SAMPLE, GenerationMode.BEAM_SEARCH):
             # 11. prepare beam search scorer

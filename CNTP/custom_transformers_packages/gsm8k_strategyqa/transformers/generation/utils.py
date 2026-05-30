@@ -2025,19 +2025,31 @@ class GenerationMixin:
                 **model_kwargs,
             )
 
-            # 13. run sample (it degenerates to greedy search when `generation_config.do_sample=False`)
-            # modify the name from _sample to _sample_reflect by yizhou
-            result = self._sample_reflect_perplexity(
-                input_ids,
-                logits_processor=prepared_logits_processor,
-                logits_warper=prepared_logits_warper, # yizhou
-                stopping_criteria=prepared_stopping_criteria,
-                generation_config=generation_config,
-                synced_gpus=synced_gpus,
-                streamer=streamer,
-                tokenizer=tokenizer, # yizhou
-                **model_kwargs,
-            )
+            # 13. run standard sample/greedy by default. CNTP-style
+            # multi-trial decoding must be requested explicitly.
+            if getattr(generation_config, "cntp_perplexity", False):
+                result = self._sample_reflect_perplexity(
+                    input_ids,
+                    logits_processor=prepared_logits_processor,
+                    logits_warper=prepared_logits_warper, # yizhou
+                    stopping_criteria=prepared_stopping_criteria,
+                    generation_config=generation_config,
+                    synced_gpus=synced_gpus,
+                    streamer=streamer,
+                    tokenizer=tokenizer, # yizhou
+                    **model_kwargs,
+                )
+            else:
+                result = self._sample(
+                    input_ids,
+                    logits_processor=prepared_logits_processor,
+                    logits_warper=prepared_logits_warper,
+                    stopping_criteria=prepared_stopping_criteria,
+                    generation_config=generation_config,
+                    synced_gpus=synced_gpus,
+                    streamer=streamer,
+                    **model_kwargs,
+                )
 
         elif generation_mode == GenerationMode.CNTP_SAME_NUM_TRIALS:
             # 11. prepare logits warper
@@ -2416,6 +2428,8 @@ class GenerationMixin:
                 "`do_sample` is set to `True`, `logits_warper` must be a `LogitsProcessorList` instance (it is "
                 f"{logits_warper})."
             )
+        if logits_warper is None:
+            logits_warper = LogitsProcessorList()
 
         # init attention / hidden states / scores tuples
         scores = () if (return_dict_in_generate and output_scores) else None
@@ -3015,6 +3029,8 @@ class GenerationMixin:
                 "`do_sample` is set to `True`, `logits_warper` must be a `LogitsProcessorList` instance (it is "
                 f"{logits_warper})."
             )
+        if logits_warper is None:
+            logits_warper = LogitsProcessorList()
 
         # init attention / hidden states / scores tuples
         scores = () if (return_dict_in_generate and output_scores) else None
@@ -3974,6 +3990,8 @@ class GenerationMixin:
                 "`do_sample` is set to `True`, `logits_warper` must be a `LogitsProcessorList` instance (it is "
                 f"{logits_warper})."
             )
+        if logits_warper is None:
+            logits_warper = LogitsProcessorList()
 
         # init attention / hidden states / scores tuples
         scores = () if (return_dict_in_generate and output_scores) else None

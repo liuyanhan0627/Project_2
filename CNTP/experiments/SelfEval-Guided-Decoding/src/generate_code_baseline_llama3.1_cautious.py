@@ -197,7 +197,8 @@ if __name__ == "__main__":
         stop_strings = '\n\n\n',
         entropy_threshold_low=args.entropy_threshold_low,
         entropy_threshold_high=args.entropy_threshold_high,
-        max_trials=args.max_trials
+        max_trials=args.max_trials,
+        cntp_perplexity=True
     )
     
     if args.reverse:

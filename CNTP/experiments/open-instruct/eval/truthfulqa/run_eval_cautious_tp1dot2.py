@@ -201,7 +201,8 @@ def run_hf_model(questions, model, tokenizer, tag, preset="qa", batch_size=1, ma
     completions = generate_completions(
         model, tokenizer, prompts, entropy_threshold_low=0.01, entropy_threshold_high=1.5, batch_size=batch_size, max_new_tokens=max_new_tokens,
         stop_id_sequences=[stop_sequence] if chat_formatting_function is None else None, 
-        do_sample=True, temperature=1.2, top_p=0.9, tokenizer=tokenizer, max_trials=10
+        do_sample=True, temperature=1.2, top_p=0.9, tokenizer=tokenizer, max_trials=10,
+        cntp_perplexity=True
     )
     assert len(completions) == len(prompts)
 

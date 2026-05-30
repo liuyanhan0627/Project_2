@@ -346,6 +346,7 @@ class GenerationConfig(PushToHubMixin):
         max_trials: int = 40, # yizhou begin
         entropy_threshold_low: float = 1.0,
         entropy_threshold_high: float = 3.0, 
+        cntp_perplexity: bool = False,
         cntp_same_num_trials: bool = False,
         cntp_negatively_correlated: bool = False, # yizhou end
         **kwargs):
@@ -457,6 +458,7 @@ class GenerationConfig(PushToHubMixin):
         self.max_trials = max_trials
         self.entropy_threshold_low = entropy_threshold_low
         self.entropy_threshold_high = entropy_threshold_high
+        self.cntp_perplexity = cntp_perplexity
         self.cntp_same_num_trials = cntp_same_num_trials
         self.cntp_negatively_correlated = cntp_negatively_correlated
         # yizhou end

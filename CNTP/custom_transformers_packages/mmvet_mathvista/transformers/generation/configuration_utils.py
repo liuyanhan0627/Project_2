@@ -404,6 +404,7 @@ class GenerationConfig(PushToHubMixin):
         self.num_beam_groups = kwargs.pop("num_beam_groups", 1)
         self.penalty_alpha = kwargs.pop("penalty_alpha", None)
         self.dola_layers = kwargs.pop("dola_layers", None)
+        self.cntp_perplexity = kwargs.pop("cntp_perplexity", False)
 
         # Parameters that control the cache
         self.use_cache = kwargs.pop("use_cache", True)

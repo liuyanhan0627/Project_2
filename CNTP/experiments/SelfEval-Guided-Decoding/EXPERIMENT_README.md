@@ -54,5 +54,6 @@ bash scripts/group_experiment/run_first_round_dual_a800.sh
 
 - Group A uses both GPUs: target model on `cuda:0`, draft model on `cuda:1`.
 - Baseline and Group B use only `cuda:0`.
+- Baseline and Group B must use standard greedy/sample decoding; CNTP multi-trial decoding is only enabled by explicit `cntp_perplexity`, `cntp_same_num_trials`, or `cntp_negatively_correlated` flags.
 - Group A includes batched candidate PPL verification. Serial path scoring should only be used for debugging or ablation.
 - Group B records `should_restart`, first solution tokens, reflection tokens, and wall-clock time in `groupb_metrics`.
