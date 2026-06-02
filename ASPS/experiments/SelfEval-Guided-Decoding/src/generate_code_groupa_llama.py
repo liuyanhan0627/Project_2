@@ -6,7 +6,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
 
 from groupa_async_decoding import GroupAAsyncDecoder, GroupADecodingConfig
-from utils.dataset import jsonlines_load
+from utils.dataset import jsonlines_load, load_dataset_examples
 from utils.prompt import get_prompt_inputs, get_prompts
 from utils.tool import *
 
@@ -52,6 +52,8 @@ def parse_args():
             "saycan",
             "strategyqa",
             "gsm8k_cot",
+            "math",
+            "truthfulqa",
         ],
     )
     parser.add_argument("--input_file", required=True, type=str)
@@ -129,7 +131,7 @@ if __name__ == "__main__":
     set_seed(args.seed)
     os.makedirs(args.output_dir, exist_ok=True)
 
-    data_test = jsonlines_load(args.input_file)
+    data_test = load_dataset_examples(args.dt_name, args.input_file)
     for i, _ in enumerate(data_test):
         data_test[i]["index"] = i
 
@@ -204,15 +206,17 @@ if __name__ == "__main__":
                 if len(result_counter) > 0:
                     prediction = result_counter.most_common(1)[0][0]
                 gt_ans = exp.get("answer", None)
-                if finqa_equal(prediction, gt_ans, False):
+                score = score_prediction(args.dt_name, prediction, gt_ans)
+                if score is True:
                     correct += 1
-                else:
+                elif score is False:
                     wrong += 1
 
                 exp.update(
                     {
                         "executed": prediction,
                         "generated": results,
+                        "is_correct": score,
                         "raw_generation": raw_results["choices"][0]["text"],
                         "groupa_metrics": raw_results["choices"][0]["groupa_metrics"],
                     }
@@ -224,9 +228,15 @@ if __name__ == "__main__":
         decoder.close()
 
     total = correct + wrong
-    accuracy = correct / total if total else 0.0
+    accuracy = correct / total if total else None
     print("======================")
-    print(accuracy, "(", correct, "/", total, ")")
+    if accuracy is None:
+        print("Accuracy: N/A (no automatic metric)")
+    else:
+        print(accuracy, "(", correct, "/", total, ")")
     summary_filename = filename.replace(".jsonl", "_summary.txt")
     with open(summary_filename, "w") as f:
-        f.write(f"Accuracy: {accuracy:.4f} ({correct}/{total})\n")
+        if accuracy is None:
+            f.write("Accuracy: N/A (no automatic metric)\n")
+        else:
+            f.write(f"Accuracy: {accuracy:.4f} ({correct}/{total})\n")

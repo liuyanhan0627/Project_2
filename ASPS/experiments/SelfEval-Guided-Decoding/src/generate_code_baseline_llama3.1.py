@@ -7,7 +7,7 @@ from transformers import GenerationConfig, set_seed
 
 from utils.tool import *
 from utils.prompt import *
-from utils.dataset import jsonlines_load
+from utils.dataset import jsonlines_load, load_dataset_examples
 
 
 def parse_args():
@@ -34,7 +34,7 @@ def parse_args():
                             'gsm8k', 'aqua', 'svamp', 'asdiv', 'mawps', 'tabmwp', 'finqa',
                             'object_counting', 'repeat_copy', 'colored_object', 'penguin',
                             'date_understanding', 'sports', 'csqa', 'saycan', 'strategyqa',
-                            'gsm8k_cot',
+                            'gsm8k_cot', 'math', 'truthfulqa',
                         ],
                         help='the dataset to test')
     parser.add_argument("--input_file", required=True, type=str)
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     set_seed(args.seed)
     
     ### ==================== Load Input Data ==================== ###
-    data_test = jsonlines_load(args.input_file)
+    data_test = load_dataset_examples(args.dt_name, args.input_file)
     for i, _ in enumerate(data_test):
         data_test[i]['index'] = i
 
@@ -243,13 +243,14 @@ if __name__ == "__main__":
             if len(result_counter) > 0:
                 prediction = result_counter.most_common(1)[0][0]
             gt_ans = exp.get('answer', None)
-            if finqa_equal(prediction, gt_ans, False):
+            score = score_prediction(args.dt_name, prediction, gt_ans)
+            if score is True:
                 correct += 1
-            else:
+            elif score is False:
                 wrong += 1
             exp = batch[0]
             exp.update({
-                'executed': prediction, 'generated': results,
+                'executed': prediction, 'generated': results, 'is_correct': score,
             })
             with jsonlines.open(filename, mode='a') as writer:
                 writer.write(exp)
@@ -258,24 +259,32 @@ if __name__ == "__main__":
                 code = rst
                 prediction = extract_prediction_from_generation(args.dt_name, code)
                 gt_ans = exp.get('answer', None)
-                if finqa_equal(prediction, gt_ans, False):
+                score = score_prediction(args.dt_name, prediction, gt_ans)
+                if score is True:
                     correct += 1
-                else:
+                elif score is False:
                     wrong += 1
                 exp.update({
-                    'executed': prediction, 'generated': [rst],
+                    'executed': prediction, 'generated': [rst], 'is_correct': score,
                 })
                 with jsonlines.open(filename, mode='a') as writer:
                     writer.write(exp)
 
         torch.cuda.empty_cache()
 
-    accuracy = correct / (correct + wrong)
+    total = correct + wrong
+    accuracy = correct / total if total else None
         
     print('======================')
-    print(correct / (correct + wrong), '(', correct, '/', correct + wrong, ')')
+    if accuracy is None:
+        print('Accuracy: N/A (no automatic metric)')
+    else:
+        print(accuracy, '(', correct, '/', total, ')')
 
     # Save accuracy to a summary file
     summary_filename = filename.replace('.jsonl', '_summary.txt')
     with open(summary_filename, 'w') as f:
-        f.write(f'Accuracy: {accuracy:.4f} ({correct}/{correct + wrong})\n')
+        if accuracy is None:
+            f.write('Accuracy: N/A (no automatic metric)\n')
+        else:
+            f.write(f'Accuracy: {accuracy:.4f} ({correct}/{total})\n')

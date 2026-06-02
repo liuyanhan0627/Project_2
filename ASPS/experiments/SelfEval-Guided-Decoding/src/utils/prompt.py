@@ -16,7 +16,11 @@ def import_name(modulename, name):
 
 
 def _get_reasoning_type(dt_name):
-    if dt_name in ['colored_object', 'date_understanding', 'penguin']:
+    if dt_name in ['math']:
+        reasoning_type = 'math'
+    elif dt_name in ['truthfulqa']:
+        reasoning_type = 'open_qa'
+    elif dt_name in ['colored_object', 'date_understanding', 'penguin']:
         reasoning_type = 'symbolic'
     elif dt_name in ['object_counting', 'repeat_copy']:
         reasoning_type = 'algorithmic'
@@ -31,7 +35,13 @@ def _get_request(raw, dt_name):
     reasoning_type = _get_reasoning_type(dt_name)
     instruction, in_context = '', ''
     
-    if dt_name in [
+    if dt_name in ['math']:
+        instruction = 'Solve the following math problem by reasoning step by step. Put the final answer within \\boxed{}:\n'
+        in_context = raw.strip()
+    elif dt_name in ['truthfulqa']:
+        instruction = 'Answer the following question truthfully and concisely:\n'
+        in_context = raw.strip()
+    elif dt_name in [
         'gsm8k', 'mawps', 'date_understanding', 'colored_object', 'repeat_copy', 'object_counting',
         'strategyqa', 'sports', 'gsm8k_cot',
     ]:
@@ -72,11 +82,14 @@ def _split_ans(ans_prompt, reasoning_type, dt_name):
                 {"role": "user", "content": f"{instr}{qu}"}, {"role": "assistant", "content": soln},
             ]
         return to_return
-    elif reasoning_type in ['commonsense']:
+    elif reasoning_type in ['commonsense', 'math', 'open_qa']:
         examples = ans_prompt.strip().split('\n\n\n\n\n')
-        to_return = [{"role": "system", "content": f"You are a helpful assistant that conducts step-by-step reasoning to answer {reasoning_type} questions. "}]
+        to_return = [{"role": "system", "content": f"You are a helpful assistant that answers {reasoning_type} questions. "}]
         for example in examples:
-            qu, soln = example.split('\n\nA:\n')
+            if '\n\nA:\n' in example:
+                qu, soln = example.split('\n\nA:\n')
+            else:
+                qu, soln = example.split('\n\nSolution:\n')
             instr, qu = _get_request(qu, dt_name)
             soln = soln.strip()
             to_return += [
@@ -89,12 +102,14 @@ def get_prompts(dt_name, return_eval=True, use_chatgpt=False):
     reasoning_type = _get_reasoning_type(dt_name)
     if reasoning_type == 'arithmetic':
         path = ['prompts', dt_name]
+    elif reasoning_type in ['math', 'open_qa']:
+        path = ['prompts', dt_name]
     else:
         path = ['prompts', reasoning_type, dt_name]
     
     modulename = '.'.join(path)
     
-    if reasoning_type in ['commonsense']:
+    if reasoning_type in ['commonsense', 'math', 'open_qa']:
         ans_prompt = import_name(modulename, 'answer_prompt')
     else:
         ans_prompt = import_name(modulename, 'code_prompt')
@@ -162,6 +177,22 @@ def get_prompt_inputs(dt_name, prompts, example, use_chatgpt=False):
             prompt += f'Q: {qu}\n\nA:\n'
         if return_eval:
             prefix += f'Q: {qu}\n\nA:\n'
+    elif dt_name in ['math']:
+        if use_chatgpt:
+            instr, _ = _get_request(qu, dt_name)
+            prompt += [{"role": "user", "content": f"{instr}{qu}"}]
+        else:
+            prompt += f'Question: {qu}\n\nSolution:\n'
+        if return_eval:
+            prefix += f'Question: {qu}\n\nSolution:\n'
+    elif dt_name in ['truthfulqa']:
+        if use_chatgpt:
+            instr, _ = _get_request(qu, dt_name)
+            prompt += [{"role": "user", "content": f"{instr}{qu}"}]
+        else:
+            prompt += f'\n\nQ: {qu}\nA:'
+        if return_eval:
+            prefix += f'\n\nQ: {qu}\nA:'
     elif dt_name in ['saycan']:
         prompt += f'Human: {qu}\n\n'
         if return_eval:
@@ -177,4 +208,3 @@ def get_prompt_inputs(dt_name, prompts, example, use_chatgpt=False):
             prefix += f'Q: {qu}\nAnswer Choices:\n{options}\n\nA:\n'
     
     return prompt, prefix
-

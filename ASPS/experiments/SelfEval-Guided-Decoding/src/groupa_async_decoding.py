@@ -20,6 +20,8 @@ class GroupADecodingConfig:
     big_top_p: float = 1.0
     small_temperature: float = 0.7
     small_top_p: float = 0.9
+    path_length_weight_alpha: float = 0.0
+    path_length_weight_mode: str = "none"
     stop_strings: Sequence[str] = field(default_factory=lambda: ("\n\n\n",))
     use_prefix_cache_for_verify: bool = True
     punctuation: Sequence[str] = field(
@@ -33,7 +35,7 @@ class GroupAAsyncDecoder:
     The target model keeps decoding a fallback punctuation span while the draft
     model proposes short punctuation-bounded paths. If drafts return before the
     one-span rollback window closes, the target model scores every candidate in
-    one batched verification pass and switches to the lowest-PPL path.
+    one batched verification pass and switches by the configured path score.
     """
 
     def __init__(self, big_model, big_tokenizer, small_model, small_tokenizer, config: GroupADecodingConfig):
@@ -303,6 +305,22 @@ class GroupAAsyncDecoder:
                 print(f"[GroupA] prefix-cache verification failed; falling back to full-batch scoring: {exc}")
         return self._score_candidates_full_batch(trigger_prefix_ids, candidate_token_ids), "full_batch"
 
+    def _candidate_length_weights(self, candidate_token_ids: List[List[int]]) -> List[float]:
+        if self.config.path_length_weight_alpha <= 0 or self.config.path_length_weight_mode == "none":
+            return [0.0 for _ in candidate_token_ids]
+
+        lengths = [max(1, len(ids)) for ids in candidate_token_ids]
+        max_len = max(lengths)
+        min_len = min(lengths)
+        mode = self.config.path_length_weight_mode
+
+        if mode == "shorter":
+            return [min_len / length for length in lengths]
+        if mode == "log_longer":
+            denom = max(1e-6, math.log1p(max_len))
+            return [math.log1p(length) / denom for length in lengths]
+        return [length / max_len for length in lengths]
+
     def _should_stop_text(self, text: str) -> bool:
         return any(stop and stop in text for stop in self.config.stop_strings)
 
@@ -325,6 +343,11 @@ class GroupAAsyncDecoder:
             "verify_calls": 0,
             "verify_modes": {},
             "candidate_ppl": [],
+            "candidate_base_scores": [],
+            "candidate_length_weights": [],
+            "candidate_weighted_scores": [],
+            "length_weight_overrides": 0,
+            "accepted_tokens_per_verify": [],
             "fallback_path_lengths": [],
             "draft_path_lengths": [],
             "wall_time": 0.0,
@@ -380,8 +403,21 @@ class GroupAAsyncDecoder:
             metrics["verify_modes"][verify_mode] = metrics["verify_modes"].get(verify_mode, 0) + 1
             ppls = [math.exp(-score) for score in avg_logprobs]
             metrics["candidate_ppl"].append(dict(zip(labels, ppls)))
-            best_idx = max(range(len(avg_logprobs)), key=lambda i: avg_logprobs[i])
+            length_weights = self._candidate_length_weights(candidates)
+            weighted_scores = [
+                score + self.config.path_length_weight_alpha * weight
+                for score, weight in zip(avg_logprobs, length_weights)
+            ]
+            best_base_idx = max(range(len(avg_logprobs)), key=lambda i: avg_logprobs[i])
+            best_idx = max(range(len(weighted_scores)), key=lambda i: weighted_scores[i])
             best_label = labels[best_idx]
+            metrics["accepted_tokens_per_verify"].append(len(candidates[best_idx]))
+            if self.config.path_length_weight_alpha > 0 and self.config.path_length_weight_mode != "none":
+                metrics["candidate_base_scores"].append(dict(zip(labels, avg_logprobs)))
+                metrics["candidate_length_weights"].append(dict(zip(labels, length_weights)))
+                metrics["candidate_weighted_scores"].append(dict(zip(labels, weighted_scores)))
+                if best_idx != best_base_idx:
+                    metrics["length_weight_overrides"] += 1
 
             if best_label == "fallback":
                 metrics["fallback_wins"] += 1

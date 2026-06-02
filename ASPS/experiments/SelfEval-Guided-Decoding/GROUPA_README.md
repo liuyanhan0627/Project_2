@@ -1,6 +1,6 @@
-# Group A: CNTP + Small Draft Model Prototype
+# Group A: ASPS Small Draft Model Prototype
 
-This prototype implements the Group A idea on top of CNTP's GSM8K / StrategyQA experiment layout:
+This prototype implements **Asynchronous Speculative Path Switching (ASPS)** on top of CNTP's GSM8K / StrategyQA experiment layout:
 
 ```text
 target Llama entropy trigger
@@ -17,7 +17,7 @@ target Llama entropy trigger
 
 ## Example
 
-Run from `experiments/SelfEval-Guided-Decoding/src`:
+Run from `ASPS/experiments/SelfEval-Guided-Decoding/src`:
 
 ```bash
 python generate_code_groupa_llama.py --verbal \

@@ -2,6 +2,18 @@ __pycache__/
 *.pyc
 .DS_Store
 .ipynb_checkpoints/
-CNTP/experiments/SelfEval-Guided-Decoding/outputs/
-CNTP/experiments/open-instruct/outputs/
-CNTP/experiments/VLMEvalKit/outputs/
+ASPS/experiments/SelfEval-Guided-Decoding/outputs/
+ASPS/experiments/open-instruct/outputs/
+ASPS/experiments/VLMEvalKit/outputs/
+CNTP_reference/
+
+# Experiment artifacts
+/data/
+/outputs/
+/checkpoints/
+/server_logs/
+/experiments/registry.csv
+ASPS/experiments/SelfEval-Guided-Decoding/data/
+ASPS/experiments/SelfEval-Guided-Decoding/checkpoints/
+ASPS/experiments/open-instruct/checkpoints/
+ASPS/experiments/VLMEvalKit/checkpoints/

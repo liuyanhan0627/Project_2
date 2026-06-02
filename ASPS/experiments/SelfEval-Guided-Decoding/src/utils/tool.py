@@ -189,8 +189,99 @@ def _as_generation_text(generated_text):
     return str(generated_text)
 
 
+def _extract_last_boxed(text):
+    marker_positions = [m.start() for m in regex.finditer(r'\\(?:boxed|fbox)\s*\{', text)]
+    if not marker_positions:
+        return None
+    start = text.find('{', marker_positions[-1])
+    depth = 0
+    for idx in range(start, len(text)):
+        char = text[idx]
+        if char == '{':
+            depth += 1
+        elif char == '}':
+            depth -= 1
+            if depth == 0:
+                return text[start + 1:idx].strip()
+    return None
+
+
+def normalize_math_text(answer):
+    if answer is None:
+        return None
+    answer = str(answer).strip()
+    boxed = _extract_last_boxed(answer)
+    if boxed is not None:
+        answer = boxed
+    else:
+        matches = regex.findall(r'(?:Final Answer|final answer|Answer|answer)\s*:?\s*(.+)', answer)
+        if matches:
+            answer = matches[-1]
+    answer = answer.strip().strip('$').strip()
+    answer = answer.replace('\\left', '').replace('\\right', '')
+    answer = regex.sub(r'\s+', '', answer)
+    return answer.rstrip('.')
+
+
+def _try_float_from_math(answer):
+    if answer is None:
+        return None
+    text = str(answer)
+    frac = regex.fullmatch(r'\\frac\{([^{}]+)\}\{([^{}]+)\}', text)
+    try:
+        if frac:
+            return float(frac.group(1)) / float(frac.group(2))
+        return float(text.replace(',', ''))
+    except Exception:
+        return None
+
+
+def math_equal(prediction, reference):
+    pred = normalize_math_text(prediction)
+    ref = normalize_math_text(reference)
+    if pred is None or ref is None:
+        return False
+    if pred == ref:
+        return True
+    pred_float = _try_float_from_math(pred)
+    ref_float = _try_float_from_math(ref)
+    if pred_float is not None and ref_float is not None:
+        return isclose(pred_float, ref_float, rel_tol=0.001, abs_tol=1e-8)
+    return pred.lower() == ref.lower()
+
+
+def is_unscored_dataset(dt_name):
+    return dt_name in {'truthfulqa'}
+
+
+def _coerce_numeric_string(value):
+    if isinstance(value, str):
+        cleaned = value.strip().replace(',', '')
+        if regex.fullmatch(r'[-+]?\d+(?:\.\d+)?', cleaned):
+            try:
+                return float(cleaned)
+            except Exception:
+                return value
+    return value
+
+
+def score_prediction(dt_name, prediction, reference):
+    if is_unscored_dataset(dt_name) or reference is None:
+        return None
+    if dt_name == 'math':
+        return math_equal(prediction, reference)
+    return finqa_equal(_coerce_numeric_string(prediction), _coerce_numeric_string(reference), False)
+
+
 def extract_prediction_from_generation(dt_name, generated_text):
     text = _as_generation_text(generated_text)
+
+    if dt_name == 'math':
+        return normalize_math_text(text)
+
+    if dt_name == 'truthfulqa':
+        lines = [line.strip() for line in text.strip().splitlines() if line.strip()]
+        return lines[0] if lines else text.strip()
 
     if dt_name in ['strategyqa', 'sports']:
         marked = regex.findall(r'(?:ANSWER\s*:|So the answer is)\s*(yes|no)\b', text, flags=regex.I)
