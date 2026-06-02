@@ -31,7 +31,7 @@ common_args:
 
 datasets:
   - name: gsm8k
-    input_file: ${DATAHOME:-ASPS/experiments/SelfEval-Guided-Decoding/data/gsm8k_test.jsonl}
+    input_file: ${DATAHOME:-ASPS/experiments/SelfEval-Guided-Decoding/data}/gsm8k_test.jsonl
     start: 0
     end: 0
 

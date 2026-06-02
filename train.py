@@ -20,6 +20,7 @@ GROUP_SCRIPTS = {
     "group_c": "generate_code_groupc_llama.py",
 }
 
+REPO_ROOT = Path(__file__).resolve().parent
 DEFAULT_SRC_DIR = "ASPS/experiments/SelfEval-Guided-Decoding/src"
 ENV_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-(.*?))?\}")
 ACCURACY_PATTERN = re.compile(r"Accuracy:\s*([0-9.]+)\s*\((\d+)\s*/\s*(\d+)\)")
@@ -59,6 +60,13 @@ def load_config(path: Path) -> Dict[str, Any]:
     return expand_env_values(config)
 
 
+def resolve_repo_path(value: str | Path) -> Path:
+    path = Path(value)
+    if path.is_absolute():
+        return path
+    return REPO_ROOT / path
+
+
 def slugify(value: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9_.-]+", "-", value.strip())
     cleaned = cleaned.strip("-._")
@@ -67,10 +75,10 @@ def slugify(value: str) -> str:
 
 def create_run_dir(config: Dict[str, Any], config_path: Path) -> Path:
     experiment = config.get("experiment", {})
-    output_root = Path(experiment.get("output_root", "outputs"))
+    output_root = resolve_repo_path(experiment.get("output_root", "outputs")).resolve()
     explicit_output_dir = experiment.get("output_dir")
     if explicit_output_dir:
-        run_dir = Path(explicit_output_dir)
+        run_dir = resolve_repo_path(explicit_output_dir).resolve()
     else:
         name = slugify(str(experiment.get("name") or config_path.stem))
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -142,10 +150,10 @@ def base_args_for_group(
 
     dataset_args = {
         "dt_name": dataset.get("dt_name", dataset.get("name")),
-        "input_file": dataset.get("input_file"),
+        "input_file": str(resolve_repo_path(dataset["input_file"]).resolve()) if dataset.get("input_file") else None,
         "start": dataset.get("start", common_args.pop("start", 0)),
         "end": dataset.get("end", common_args.pop("end", -1)),
-        "output_dir": str(output_dir),
+        "output_dir": str(output_dir.resolve()),
     }
     for key, value in dataset.items():
         if key not in {"name", "dt_name", "input_file", "label"}:
@@ -183,7 +191,7 @@ def base_args_for_group(
 def build_jobs(config: Dict[str, Any], run_dir: Path) -> List[Dict[str, Any]]:
     experiment = config.get("experiment", {})
     runtime = config.get("runtime", {})
-    src_dir = Path(experiment.get("src_dir", DEFAULT_SRC_DIR)).resolve()
+    src_dir = resolve_repo_path(experiment.get("src_dir", DEFAULT_SRC_DIR)).resolve()
     python_bin = runtime.get("python", sys.executable)
 
     datasets = config.get("datasets", [])

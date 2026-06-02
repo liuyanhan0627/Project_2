@@ -31,11 +31,11 @@ common_args:
 
 datasets:
   - name: gsm8k
-    input_file: ${DATAHOME:-ASPS/experiments/SelfEval-Guided-Decoding/data/gsm8k_test.jsonl}
+    input_file: ${DATAHOME:-ASPS/experiments/SelfEval-Guided-Decoding/data}/gsm8k_test.jsonl
     start: 0
     end: 99
   - name: strategyqa
-    input_file: ${DATAHOME:-ASPS/experiments/SelfEval-Guided-Decoding/data/strategyqa_test.jsonl}
+    input_file: ${DATAHOME:-ASPS/experiments/SelfEval-Guided-Decoding/data}/strategyqa_test.jsonl
     start: 0
     end: 99
   - name: math
