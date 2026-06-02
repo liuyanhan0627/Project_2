@@ -8,7 +8,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, Iterable, List, Union
 
 import yaml
 
@@ -60,7 +60,7 @@ def load_config(path: Path) -> Dict[str, Any]:
     return expand_env_values(config)
 
 
-def resolve_repo_path(value: str | Path) -> Path:
+def resolve_repo_path(value: Union[str, Path]) -> Path:
     path = Path(value)
     if path.is_absolute():
         return path
