@@ -201,6 +201,56 @@ python3 train.py --config configs/smoke.yaml --dry-run
 python3 train.py --config configs/smoke.yaml
 ```
 
+长时间实验必须放在 `tmux` 里运行，避免本地电脑关机、断网或 SSH 终端关闭后服务器进程被中断。`smoke` 可以在前台验证；`first100`、完整 Group A/C/B、结果导出等长流程默认使用 `tmux`。
+
+推荐启动方式：
+
+```bash
+cd /root/autodl-tmp/Project_2
+tmux new -s asps
+```
+
+进入 `tmux` 后再激活环境、设置缓存 / token / 数据路径并运行实验：
+
+```bash
+source /root/miniconda3/etc/profile.d/conda.sh
+conda activate gsm8k_strategyqa
+
+export HF_ENDPOINT=https://hf-mirror.com
+export HF_HOME=/root/autodl-tmp/hf_cache
+export TRANSFORMERS_CACHE=/root/autodl-tmp/hf_cache
+export DATAHOME=/root/autodl-tmp/Project_2/ASPS/experiments/SelfEval-Guided-Decoding/data
+read -s HF_TOKEN
+export HF_TOKEN
+
+export EXPORT_NAME="$(date +%Y%m%d-%H%M%S)_all_first100"
+RUN_SMOKE=0 EXPORT_NAME="$EXPORT_NAME" bash scripts/run_group_ac_experiments.sh
+```
+
+安全断开 `tmux`：
+
+```text
+Ctrl-b d
+```
+
+重新连接：
+
+```bash
+tmux attach -t asps
+```
+
+查看已有 `tmux` 会话：
+
+```bash
+tmux ls
+```
+
+如果会话名已存在，使用新名字，例如：
+
+```bash
+tmux new -s asps-first100-v2
+```
+
 Group A / Group C 第一轮调参配置位于：
 
 ```text
