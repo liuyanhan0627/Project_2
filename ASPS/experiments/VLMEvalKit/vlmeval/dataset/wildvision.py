@@ -49,7 +49,7 @@ PROMPT_TEMPLATE = """\
 """
 
 
-REGEX_PATTERN = re.compile("\[\[([AB<>=]+)\]\]")  # noqa: W605
+REGEX_PATTERN = re.compile(r"\[\[([AB<>=]+)\]\]")  # noqa: W605
 
 
 def get_score(judgement, pattern=REGEX_PATTERN):

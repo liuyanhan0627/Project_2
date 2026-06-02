@@ -156,4 +156,6 @@ meta_eval/
 *.png
 *.lock
 
-
+# Keep text experiment datasets versioned for direct server runs.
+!experiments/SelfEval-Guided-Decoding/data/
+!experiments/SelfEval-Guided-Decoding/data/**

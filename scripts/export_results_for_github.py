@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, List
 
 
-SKIP_DIRS = {"checkpoints", "__pycache__"}
+SKIP_DIRS = {"__pycache__"}
 SKIP_SUFFIXES = {
     ".bin",
     ".chk",

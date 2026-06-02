@@ -1,5 +1,6 @@
 import torch
 import torch.distributed as dist
+import os
 
 from vlmeval.config import supported_VLM
 from vlmeval.dataset import build_dataset
@@ -12,8 +13,9 @@ from vlmeval.utils.result_transfer import MMMU_result_transfer, MMTBench_result_
 from huggingface_hub import login
 import transformers
 
-# This sets your token for the current session
-login(token="YOUR_HF_TOKEN")
+hf_token = os.environ.get("HF_TOKEN")
+if hf_token and hf_token != "YOUR_HF_TOKEN":
+    login(token=hf_token)
 
 
 def build_model_from_config(cfg):
@@ -114,6 +116,7 @@ You can launch the evaluation by setting either --data and --model or --config.
     parser.add_argument('--fps', type=float, default=-1)
     # Work Dir
     parser.add_argument('--work-dir', type=str, default='./outputs', help='select the output directory')
+    parser.add_argument('--limit', type=int, default=None, help='Limit each dataset to the first N examples')
     # Infer + Eval or Infer Only
     parser.add_argument('--mode', type=str, default='all', choices=['all', 'infer'])
     # API Kwargs, Apply to API VLMs and Judge API LLMs
@@ -220,6 +223,9 @@ def main():
                     if dataset is None:
                         logger.error(f'Dataset {dataset_name} is not valid, will be skipped. ')
                         continue
+                    if args.limit is not None and args.limit > 0:
+                        dataset.data = dataset.data.iloc[:args.limit].copy()
+                        logger.info(f'Limit dataset {dataset_name} to {len(dataset)} examples. ')
                     # Handling Video Datasets. For Video Dataset, set the fps for priority
                     if args.fps > 0:
                         if dataset_name == 'MVBench':
@@ -247,6 +253,11 @@ def main():
                 # Handling Multi-Turn Dataset
                 if dataset.TYPE == 'MT':
                     result_file_base = result_file_base.replace('.xlsx', '.tsv')
+                if args.limit is not None and args.limit > 0:
+                    if result_file_base.endswith('.xlsx'):
+                        result_file_base = result_file_base.replace('.xlsx', f'_n{args.limit}.xlsx')
+                    elif result_file_base.endswith('.tsv'):
+                        result_file_base = result_file_base.replace('.tsv', f'_n{args.limit}.tsv')
 
                 result_file = osp.join(pred_root, result_file_base)
 

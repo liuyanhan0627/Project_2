@@ -27,7 +27,7 @@ def adjust_batch_size(task_spec, model_name, batch_size_reduction):
 
     # Reduce accordingly.
     if "--eval_batch_size" in task_spec['arguments'][0]:
-        original_batch_size = re.search("--eval_batch_size (\d+)", task_spec['arguments'][0]).group(1)
+        original_batch_size = re.search(r"--eval_batch_size (\d+)", task_spec['arguments'][0]).group(1)
         new_batch_size = max(1, int(original_batch_size) // batch_size_reduction)
         task_spec['arguments'] = [task_spec['arguments'][0].replace("--eval_batch_size {}".format(original_batch_size), "--eval_batch_size {}".format(new_batch_size))]
 
@@ -493,7 +493,7 @@ for experiment_group in experiment_groups:
     # if a specific checkpoint is specified, load model from that checkpoint
     if model_info[2] is not None:
         # extract existing model path
-        model_name_or_path = re.search("--model_name_or_path (\S+)", task_spec['arguments'][0]).group(1)
+        model_name_or_path = re.search(r"--model_name_or_path (\S+)", task_spec['arguments'][0]).group(1)
         # replace the model path with the checkpoint subfolder.
         task_spec['arguments'] = [task_spec['arguments'][0].replace(model_name_or_path, model_name_or_path+"/"+model_info[2], 1)]
         # NOTE: We don't change the tokenizer subfolder, because by default the

@@ -8,12 +8,12 @@ ASPS/experiments/VLMEvalKit/outputs/
 CNTP_reference/
 
 # Experiment artifacts
-/data/
 /outputs/
 /checkpoints/
 /server_logs/
 /experiments/registry.csv
-ASPS/experiments/SelfEval-Guided-Decoding/data/
+!/experiments/result_exports/
+!/experiments/result_exports/**
 ASPS/experiments/SelfEval-Guided-Decoding/checkpoints/
 ASPS/experiments/open-instruct/checkpoints/
 ASPS/experiments/VLMEvalKit/checkpoints/

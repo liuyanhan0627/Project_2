@@ -1,3 +1,13 @@
+# Asynchronous Speculative Path Switching (ASPS)
+
+This directory is the experiment implementation for **Asynchronous Speculative Path Switching (ASPS)**.
+It is adapted from the public CNTP codebase and keeps much of the original CNTP structure for compatibility.
+For a clean upstream CNTP copy, use `../CNTP_reference`.
+
+The original CNTP README is preserved below for reference.
+
+---
+
 # Cautious Next Token Prediction (CNTP)
 
 [![arXiv](https://img.shields.io/badge/arXiv-2507.03038-b31b1b.svg)](https://arxiv.org/abs/2507.03038) [![ACL 2025](https://img.shields.io/badge/ACL-2025-blue)](https://aclanthology.org/2025.findings-acl.1318/) [![huggingface](https://img.shields.io/badge/🤗-CNTP-blue)](https://huggingface.co/papers/2507.03038) 
@@ -61,8 +71,8 @@ We propose **Cautious Next Token Prediction (CNTP)**, a novel training-free deco
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/wyzjack/CNTP.git
-cd CNTP
+# In this experiment workspace:
+cd ASPS
 ```
 
 ### 2. Install the dependencies

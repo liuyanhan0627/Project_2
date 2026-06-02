@@ -44,7 +44,7 @@ python3 train.py --config configs/smoke.yaml
 python3 scripts/collect_results.py --outputs outputs --registry experiments/registry.csv
 ```
 
-`data/`、`outputs/`、`checkpoints/` 和生成的 `experiments/registry.csv` 都被 `.gitignore` 排除。
+实验数据放在 `ASPS/experiments/SelfEval-Guided-Decoding/data/` 并随代码提交，服务器 `git clone/pull` 后应可直接运行。`outputs/`、`checkpoints/` 和生成的 `experiments/registry.csv` 仍被 `.gitignore` 排除。
 
 ## Server Group A/C Tuning
 
@@ -83,7 +83,7 @@ RUN_SMOKE=0 bash scripts/run_group_ac_experiments.sh
 RUN_CONFIGS="a_safe c_low" bash scripts/run_group_ac_experiments.sh
 ```
 
-脚本会自动生成 `experiments/registry.csv`，并把可通过 GitHub 传回本地分析的完整结果复制到 `experiments/result_exports/<bundle>/`。该导出包含配置、日志、summary、metrics 和 JSONL generations，不包含 data、outputs 原目录或 checkpoint/model 权重。
+脚本会自动生成 `experiments/registry.csv`，并把可通过 GitHub 传回本地分析的完整结果复制到 `experiments/result_exports/<bundle>/`。`experiments/result_exports/` 已明确允许被 Git 跟踪。该导出包含配置、日志、summary、metrics、轻量 experiment state 和 JSONL generations，不包含 outputs 原目录或模型权重类 checkpoint 文件。数据已随主代码分支同步，不需要在结果分支重复提交。
 
 服务器跑完后，把导出的结果推到单独分支：
 

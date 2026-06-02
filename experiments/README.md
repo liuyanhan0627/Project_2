@@ -1,6 +1,7 @@
 # Experiment Results
 
 Generated runtime directories stay under `outputs/` and remain ignored by Git.
+Result export bundles under `experiments/result_exports/` are intentionally tracked and can be pushed to GitHub.
 
 For GitHub transfer, run:
 
@@ -20,4 +21,4 @@ git commit -m "Add experiment results"
 git push origin <results-branch>
 ```
 
-The export copies configs, metadata, logs, summaries, metrics, and JSONL generations, while excluding checkpoint/model-weight files.
+The export copies configs, metadata, logs, summaries, metrics, lightweight experiment state files, and JSONL generations, while excluding model-weight checkpoint files.
