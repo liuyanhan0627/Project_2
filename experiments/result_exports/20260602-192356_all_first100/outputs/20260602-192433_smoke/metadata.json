@@ -1,0 +1,8 @@
+{
+  "config_path": "/root/autodl-tmp/Project_2/configs/smoke.yaml",
+  "dry_run": false,
+  "finished_at": "2026-06-02T19:25:28",
+  "run_dir": "/root/autodl-tmp/Project_2/outputs/20260602-192433_smoke",
+  "started_at": "2026-06-02T19:24:33",
+  "status": "completed"
+}
