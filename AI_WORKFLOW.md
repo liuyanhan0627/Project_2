@@ -104,14 +104,26 @@ export HF_HOME=/root/autodl-tmp/hf_cache
 export TRANSFORMERS_CACHE=/root/autodl-tmp/hf_cache
 ```
 
-如果 GitHub 直连很慢或超时，服务器可临时使用平台提供的 GitHub 镜像源，例如：
+如果 GitHub 直连很慢、超时或出现 TLS 连接中断，AutoDL 平台会在实例页面提供当前可用的 GitHub 加速域名。当前可用域名示例：
+
+```text
+https://ghfast.top
+```
+
+注意：`ghfast.top` 是 AutoDL 当前提供的 GitHub 加速域名，不是本项目固定依赖；后续 AutoDL 可能更换该域名。每次服务器网络异常时，应优先查看 AutoDL 实例页面上的“域名列表 / 当前可用”提示，再替换到下面命令中。
+
+服务器可临时把远程地址切到 AutoDL 提供的 GitHub 加速域名，例如：
 
 ```bash
 git remote set-url origin https://ghfast.top/https://github.com/liuyanhan0627/Project_2.git
 git pull origin main
 ```
 
-拉取成功后可以再按需要切回原始 GitHub 地址。
+拉取或推送完成后，可以再按需要切回原始 GitHub 地址：
+
+```bash
+git remote set-url origin https://github.com/liuyanhan0627/Project_2.git
+```
 
 ## 4.1 服务器环境激活与依赖检查
 
