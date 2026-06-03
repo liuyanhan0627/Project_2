@@ -1,0 +1,31 @@
+$ cd /root/autodl-tmp/Project_2/ASPS/experiments/SelfEval-Guided-Decoding/src
+$ python3 generate_code_groupb_reflect_llama.py --batch_size 1 --seed 0 --max_tokens 64 --model_name meta-llama/Meta-Llama-3.1-8B-Instruct --auth_token HF_TOKEN_REDACTED --device cuda:0 --dt_name gsm8k --input_file /root/autodl-tmp/Project_2/ASPS/experiments/SelfEval-Guided-Decoding/data/gsm8k_test.jsonl --start 0 --end 0 --output_dir /root/autodl-tmp/Project_2/outputs/20260602-192433_smoke/results/gsm8k/group_b --temperature 0.0 --top_p 1.0 --max_reflection_tokens 64
+
+/root/autodl-tmp/Project_2/ASPS/custom_transformers_packages/gsm8k_strategyqa/transformers/utils/hub.py:127: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(
+number of examples:  1
+
+  0%|          | 0/1 [00:00<?, ?it/s]
+100%|██████████| 1/1 [00:00<00:00, 34379.54it/s]
+/root/autodl-tmp/Project_2/ASPS/custom_transformers_packages/gsm8k_strategyqa/transformers/models/auto/tokenization_auto.py:786: FutureWarning: The `use_auth_token` argument is deprecated and will be removed in v5 of Transformers. Please use `token` instead.
+  warnings.warn(
+/root/autodl-tmp/Project_2/ASPS/custom_transformers_packages/gsm8k_strategyqa/transformers/models/auto/auto_factory.py:469: FutureWarning: The `use_auth_token` argument is deprecated and will be removed in v5 of Transformers. Please use `token` instead.
+  warnings.warn(
+Loading model on cuda:0: meta-llama/Meta-Llama-3.1-8B-Instruct
+
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]
+Loading checkpoint shards:  25%|██▌       | 1/4 [00:01<00:03,  1.21s/it]
+Loading checkpoint shards:  50%|█████     | 2/4 [00:02<00:02,  1.13s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:03<00:01,  1.04s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:03<00:00,  1.36it/s]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:03<00:00,  1.14it/s]
+
+  0%|          | 0/1 [00:00<?, ?it/s]/root/autodl-tmp/Project_2/ASPS/custom_transformers_packages/gsm8k_strategyqa/transformers/generation/configuration_utils.py:599: UserWarning: `do_sample` is set to `False`. However, `temperature` is set to `0.0` -- this flag is only used in sample-based generation modes. You should set `do_sample=True` or unset `temperature`. This was detected when initializing the generation config instance, which means the corresponding file may hold incorrect parameterization and should be fixed.
+  warnings.warn(
+/root/autodl-tmp/Project_2/ASPS/custom_transformers_packages/gsm8k_strategyqa/transformers/generation/configuration_utils.py:599: UserWarning: `do_sample` is set to `False`. However, `temperature` is set to `0.0` -- this flag is only used in sample-based generation modes. You should set `do_sample=True` or unset `temperature`.
+  warnings.warn(
+
+100%|██████████| 1/1 [00:04<00:00,  4.27s/it]
+100%|██████████| 1/1 [00:04<00:00,  4.27s/it]
+======================
+0.0 ( 0 / 1 )

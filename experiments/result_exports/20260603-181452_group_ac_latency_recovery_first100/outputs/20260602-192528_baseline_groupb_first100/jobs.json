@@ -1,0 +1,100 @@
+{
+  "jobs": [
+    {
+      "command": "python3 generate_code_baseline_llama3.1.py --batch_size 1 --seed 0 --max_tokens 600 --model_name meta-llama/Meta-Llama-3.1-8B-Instruct --auth_token HF_TOKEN_REDACTED --dt_name gsm8k --input_file /root/autodl-tmp/Project_2/ASPS/experiments/SelfEval-Guided-Decoding/data/gsm8k_test.jsonl --start 0 --end 99 --output_dir /root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/results/gsm8k/baseline --temperature 0.0 --top_p 1.0 --n_samples 1 --mini_n_samples 1",
+      "dataset": "gsm8k",
+      "duration_sec": 341.5964560508728,
+      "finished_at": "2026-06-02T19:31:09",
+      "group": "baseline",
+      "log_file": "/root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/logs/001_gsm8k_baseline.log",
+      "name": "001_gsm8k_baseline",
+      "result_dir": "/root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/results/gsm8k/baseline",
+      "returncode": 0,
+      "started_at": "2026-06-02T19:25:28"
+    },
+    {
+      "command": "python3 generate_code_groupb_reflect_llama.py --batch_size 1 --seed 0 --max_tokens 600 --model_name meta-llama/Meta-Llama-3.1-8B-Instruct --auth_token HF_TOKEN_REDACTED --device cuda:0 --dt_name gsm8k --input_file /root/autodl-tmp/Project_2/ASPS/experiments/SelfEval-Guided-Decoding/data/gsm8k_test.jsonl --start 0 --end 99 --output_dir /root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/results/gsm8k/group_b --temperature 0.0 --top_p 1.0 --max_reflection_tokens 256",
+      "dataset": "gsm8k",
+      "duration_sec": 1182.5111029148102,
+      "finished_at": "2026-06-02T19:50:52",
+      "group": "group_b",
+      "log_file": "/root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/logs/002_gsm8k_group_b.log",
+      "name": "002_gsm8k_group_b",
+      "result_dir": "/root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/results/gsm8k/group_b",
+      "returncode": 0,
+      "started_at": "2026-06-02T19:31:09"
+    },
+    {
+      "command": "python3 generate_code_baseline_llama3.1.py --batch_size 1 --seed 0 --max_tokens 600 --model_name meta-llama/Meta-Llama-3.1-8B-Instruct --auth_token HF_TOKEN_REDACTED --dt_name strategyqa --input_file /root/autodl-tmp/Project_2/ASPS/experiments/SelfEval-Guided-Decoding/data/strategyqa_test.jsonl --start 0 --end 99 --output_dir /root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/results/strategyqa/baseline --temperature 0.0 --top_p 1.0 --n_samples 1 --mini_n_samples 1",
+      "dataset": "strategyqa",
+      "duration_sec": 161.36412072181702,
+      "finished_at": "2026-06-02T19:53:33",
+      "group": "baseline",
+      "log_file": "/root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/logs/003_strategyqa_baseline.log",
+      "name": "003_strategyqa_baseline",
+      "result_dir": "/root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/results/strategyqa/baseline",
+      "returncode": 0,
+      "started_at": "2026-06-02T19:50:52"
+    },
+    {
+      "command": "python3 generate_code_groupb_reflect_llama.py --batch_size 1 --seed 0 --max_tokens 600 --model_name meta-llama/Meta-Llama-3.1-8B-Instruct --auth_token HF_TOKEN_REDACTED --device cuda:0 --dt_name strategyqa --input_file /root/autodl-tmp/Project_2/ASPS/experiments/SelfEval-Guided-Decoding/data/strategyqa_test.jsonl --start 0 --end 99 --output_dir /root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/results/strategyqa/group_b --temperature 0.0 --top_p 1.0 --max_reflection_tokens 256",
+      "dataset": "strategyqa",
+      "duration_sec": 749.7660739421844,
+      "finished_at": "2026-06-02T20:06:03",
+      "group": "group_b",
+      "log_file": "/root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/logs/004_strategyqa_group_b.log",
+      "name": "004_strategyqa_group_b",
+      "result_dir": "/root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/results/strategyqa/group_b",
+      "returncode": 0,
+      "started_at": "2026-06-02T19:53:33"
+    },
+    {
+      "command": "python3 generate_code_baseline_llama3.1.py --batch_size 1 --seed 0 --max_tokens 600 --model_name meta-llama/Meta-Llama-3.1-8B-Instruct --auth_token HF_TOKEN_REDACTED --dt_name math --input_file /root/autodl-tmp/Project_2/ASPS/experiments/SelfEval-Guided-Decoding/data/MATH/test.jsonl --start 0 --end 99 --output_dir /root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/results/math/baseline --temperature 0.0 --top_p 1.0 --n_samples 1 --mini_n_samples 1",
+      "dataset": "math",
+      "duration_sec": 337.3092017173767,
+      "finished_at": "2026-06-02T20:11:40",
+      "group": "baseline",
+      "log_file": "/root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/logs/005_math_baseline.log",
+      "name": "005_math_baseline",
+      "result_dir": "/root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/results/math/baseline",
+      "returncode": 0,
+      "started_at": "2026-06-02T20:06:03"
+    },
+    {
+      "command": "python3 generate_code_groupb_reflect_llama.py --batch_size 1 --seed 0 --max_tokens 600 --model_name meta-llama/Meta-Llama-3.1-8B-Instruct --auth_token HF_TOKEN_REDACTED --device cuda:0 --dt_name math --input_file /root/autodl-tmp/Project_2/ASPS/experiments/SelfEval-Guided-Decoding/data/MATH/test.jsonl --start 0 --end 99 --output_dir /root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/results/math/group_b --temperature 0.0 --top_p 1.0 --max_reflection_tokens 256",
+      "dataset": "math",
+      "duration_sec": 941.8844516277313,
+      "finished_at": "2026-06-02T20:27:22",
+      "group": "group_b",
+      "log_file": "/root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/logs/006_math_group_b.log",
+      "name": "006_math_group_b",
+      "result_dir": "/root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/results/math/group_b",
+      "returncode": 0,
+      "started_at": "2026-06-02T20:11:40"
+    },
+    {
+      "command": "python3 generate_code_baseline_llama3.1.py --batch_size 1 --seed 0 --max_tokens 600 --model_name meta-llama/Meta-Llama-3.1-8B-Instruct --auth_token HF_TOKEN_REDACTED --dt_name truthfulqa --input_file /root/autodl-tmp/Project_2/ASPS/experiments/SelfEval-Guided-Decoding/data/truthfulqa/TruthfulQA.csv --start 0 --end 99 --output_dir /root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/results/truthfulqa/baseline --temperature 0.0 --top_p 1.0 --n_samples 1 --mini_n_samples 1",
+      "dataset": "truthfulqa",
+      "duration_sec": 1802.6581058502197,
+      "finished_at": "2026-06-02T20:57:25",
+      "group": "baseline",
+      "log_file": "/root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/logs/007_truthfulqa_baseline.log",
+      "name": "007_truthfulqa_baseline",
+      "result_dir": "/root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/results/truthfulqa/baseline",
+      "returncode": 0,
+      "started_at": "2026-06-02T20:27:22"
+    },
+    {
+      "command": "python3 generate_code_groupb_reflect_llama.py --batch_size 1 --seed 0 --max_tokens 600 --model_name meta-llama/Meta-Llama-3.1-8B-Instruct --auth_token HF_TOKEN_REDACTED --device cuda:0 --dt_name truthfulqa --input_file /root/autodl-tmp/Project_2/ASPS/experiments/SelfEval-Guided-Decoding/data/truthfulqa/TruthfulQA.csv --start 0 --end 99 --output_dir /root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/results/truthfulqa/group_b --temperature 0.0 --top_p 1.0 --max_reflection_tokens 256",
+      "dataset": "truthfulqa",
+      "duration_sec": 2072.5387828350067,
+      "finished_at": "2026-06-02T21:31:57",
+      "group": "group_b",
+      "log_file": "/root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/logs/008_truthfulqa_group_b.log",
+      "name": "008_truthfulqa_group_b",
+      "result_dir": "/root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/results/truthfulqa/group_b",
+      "returncode": 0,
+      "started_at": "2026-06-02T20:57:25"
+    }
+  ]
+}

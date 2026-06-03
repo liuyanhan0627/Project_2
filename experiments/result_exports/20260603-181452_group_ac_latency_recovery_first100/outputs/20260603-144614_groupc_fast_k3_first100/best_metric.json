@@ -1,0 +1,13 @@
+{
+  "metric": "accuracy",
+  "mode": "max",
+  "row": {
+    "accuracy": 0.77,
+    "correct": 77,
+    "dataset": "gsm8k",
+    "group": "group_c",
+    "summary_file": "/root/autodl-tmp/Project_2/outputs/20260603-144614_groupc_fast_k3_first100/results/gsm8k/group_c/gsm8k_groupC_bigLlama-3.1-8B-Instruct_smallLlama-3.2-1B-Instruct_s0_e100_06_03_14_46_seed0_entropy1.3_k3_draft32_fallback32_lw0p05_longer_summary.txt",
+    "total": 100
+  },
+  "value": 0.77
+}

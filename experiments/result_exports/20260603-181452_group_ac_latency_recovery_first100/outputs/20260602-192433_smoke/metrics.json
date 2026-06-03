@@ -1,0 +1,36 @@
+{
+  "metrics": [
+    {
+      "accuracy": 0.0,
+      "correct": 0,
+      "dataset": "gsm8k",
+      "group": "baseline",
+      "summary_file": "/root/autodl-tmp/Project_2/outputs/20260602-192433_smoke/results/gsm8k/baseline/gsm8k_vanilla_Llama-3.1-Instruct-8B_tp0.0_topp1.0_s0_e1_06_02_19_24_seed0_entropy_low0.1_entropy_high1.0_summary.txt",
+      "total": 1
+    },
+    {
+      "accuracy": 0.0,
+      "correct": 0,
+      "dataset": "gsm8k",
+      "group": "group_a",
+      "summary_file": "/root/autodl-tmp/Project_2/outputs/20260602-192433_smoke/results/gsm8k/group_a/gsm8k_groupA_bigLlama-3.1-8B-Instruct_smallLlama-3.2-1B-Instruct_s0_e1_06_02_19_24_seed0_entropy1.5_k3_draft32_fallback32_summary.txt",
+      "total": 1
+    },
+    {
+      "accuracy": 0.0,
+      "correct": 0,
+      "dataset": "gsm8k",
+      "group": "group_b",
+      "summary_file": "/root/autodl-tmp/Project_2/outputs/20260602-192433_smoke/results/gsm8k/group_b/gsm8k_groupB_reflect_Llama-3.1-8B-Instruct_s0_e1_06_02_19_25_seed0_summary.txt",
+      "total": 1
+    },
+    {
+      "accuracy": 0.0,
+      "correct": 0,
+      "dataset": "gsm8k",
+      "group": "group_c",
+      "summary_file": "/root/autodl-tmp/Project_2/outputs/20260602-192433_smoke/results/gsm8k/group_c/gsm8k_groupC_bigLlama-3.1-8B-Instruct_smallLlama-3.2-1B-Instruct_s0_e1_06_02_19_25_seed0_entropy1.5_k3_draft32_fallback32_lw0p05_longer_summary.txt",
+      "total": 1
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "byte_count": 43194895,
+  "created_at": "2026-06-03T22:33:02",
+  "excluded_dirs": [
+    "__pycache__"
+  ],
+  "excluded_suffixes": [
+    ".bin",
+    ".chk",
+    ".ckpt",
+    ".pkl",
+    ".pt",
+    ".pth",
+    ".safetensors"
+  ],
+  "export_dir": "experiments/result_exports/20260603-181452_group_ac_latency_recovery_first100",
+  "file_count": 393,
+  "outputs": "outputs",
+  "redacted_files": 164,
+  "registry": "experiments/registry.csv"
+}

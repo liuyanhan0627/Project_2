@@ -1,0 +1,13 @@
+{
+  "metric": "accuracy",
+  "mode": "max",
+  "row": {
+    "accuracy": 0.8,
+    "correct": 80,
+    "dataset": "gsm8k",
+    "group": "group_b",
+    "summary_file": "/root/autodl-tmp/Project_2/outputs/20260602-192528_baseline_groupb_first100/results/gsm8k/group_b/gsm8k_groupB_reflect_Llama-3.1-8B-Instruct_s0_e100_06_02_19_31_seed0_summary.txt",
+    "total": 100
+  },
+  "value": 0.8
+}
