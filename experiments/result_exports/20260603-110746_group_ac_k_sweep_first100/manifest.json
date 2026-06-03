@@ -1,0 +1,21 @@
+{
+  "byte_count": 31415501,
+  "created_at": "2026-06-03T15:29:55",
+  "excluded_dirs": [
+    "__pycache__"
+  ],
+  "excluded_suffixes": [
+    ".bin",
+    ".chk",
+    ".ckpt",
+    ".pkl",
+    ".pt",
+    ".pth",
+    ".safetensors"
+  ],
+  "export_dir": "experiments/result_exports/20260603-110746_group_ac_k_sweep_first100",
+  "file_count": 279,
+  "outputs": "outputs",
+  "redacted_files": 116,
+  "registry": "experiments/registry.csv"
+}

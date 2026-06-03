@@ -1,0 +1,13 @@
+{
+  "metric": "accuracy",
+  "mode": "max",
+  "row": {
+    "accuracy": 0.0,
+    "correct": 0,
+    "dataset": "gsm8k",
+    "group": "baseline",
+    "summary_file": "/root/autodl-tmp/Project_2/outputs/20260602-192433_smoke/results/gsm8k/baseline/gsm8k_vanilla_Llama-3.1-Instruct-8B_tp0.0_topp1.0_s0_e1_06_02_19_24_seed0_entropy_low0.1_entropy_high1.0_summary.txt",
+    "total": 1
+  },
+  "value": 0.0
+}

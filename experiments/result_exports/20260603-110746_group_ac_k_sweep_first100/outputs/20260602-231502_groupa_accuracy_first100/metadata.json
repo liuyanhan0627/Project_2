@@ -1,0 +1,8 @@
+{
+  "config_path": "/root/autodl-tmp/Project_2/configs/group_ac/a_accuracy.yaml",
+  "dry_run": false,
+  "finished_at": "2026-06-03T00:05:05",
+  "run_dir": "/root/autodl-tmp/Project_2/outputs/20260602-231502_groupa_accuracy_first100",
+  "started_at": "2026-06-02T23:15:02",
+  "status": "completed"
+}
