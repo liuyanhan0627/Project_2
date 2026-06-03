@@ -1,5 +1,6 @@
 import argparse
 import json
+import re
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -16,6 +17,28 @@ SKIP_SUFFIXES = {
     ".pth",
     ".safetensors",
 }
+
+HF_TOKEN_PATTERN = re.compile(r"hf_[A-Za-z0-9_\-]{20,}")
+AUTH_ARG_PATTERN = re.compile(r"(--auth_token\s+)(?:'[^']+'|\"[^\"]+\"|\S+)")
+AUTH_FIELD_PATTERN = re.compile(r'("(?:HF_TOKEN|auth_token)"\s*:\s*")[^"]*(")')
+
+
+def redact_text(text: str) -> str:
+    text = HF_TOKEN_PATTERN.sub("HF_TOKEN_REDACTED", text)
+    text = AUTH_ARG_PATTERN.sub(r"\1HF_TOKEN_REDACTED", text)
+    return AUTH_FIELD_PATTERN.sub(r"\1HF_TOKEN_REDACTED\2", text)
+
+
+def redact_file(path: Path) -> bool:
+    try:
+        original = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return False
+    redacted = redact_text(original)
+    if redacted == original:
+        return False
+    path.write_text(redacted, encoding="utf-8")
+    return True
 
 
 def parse_args() -> argparse.Namespace:
@@ -58,6 +81,7 @@ def write_manifest(export_dir: Path, args: argparse.Namespace, counts: Dict[str,
         "excluded_suffixes": sorted(SKIP_SUFFIXES),
         "file_count": counts["files"],
         "byte_count": counts["bytes"],
+        "redacted_files": counts.get("redacted_files", 0),
     }
     with (export_dir / "manifest.json").open("w", encoding="utf-8") as handle:
         json.dump(manifest, handle, indent=2, ensure_ascii=False, sort_keys=True)
@@ -78,6 +102,11 @@ def main() -> int:
         shutil.copy2(registry, export_dir / "registry.csv")
         counts["files"] += 1
         counts["bytes"] += (export_dir / "registry.csv").stat().st_size
+    counts["redacted_files"] = sum(
+        1
+        for path in export_dir.rglob("*")
+        if path.is_file() and not should_skip(path) and redact_file(path)
+    )
     write_manifest(export_dir, args, counts)
     print(f"Exported {counts['files']} files to {export_dir}")
     return 0

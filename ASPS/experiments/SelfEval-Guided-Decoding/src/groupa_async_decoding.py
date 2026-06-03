@@ -8,6 +8,12 @@ from typing import Dict, List, Optional, Sequence, Tuple
 import torch
 import torch.nn.functional as F
 
+try:
+    from transformers.cache_utils import Cache, DynamicCache
+except Exception:  # pragma: no cover - older transformers fallback
+    Cache = None
+    DynamicCache = None
+
 
 @dataclass
 class GroupADecodingConfig:
@@ -114,6 +120,15 @@ class GroupAAsyncDecoder:
         if torch.is_tensor(cache):
             return cache.repeat_interleave(repeats, dim=0)
         return cache
+
+    def _cache_for_model(self, past_key_values):
+        if past_key_values is None:
+            return None
+        if Cache is not None and isinstance(past_key_values, Cache):
+            return past_key_values
+        if DynamicCache is not None and isinstance(past_key_values, (tuple, list)):
+            return DynamicCache.from_legacy_cache(tuple(past_key_values))
+        return past_key_values
 
     def _decode_text(self, tokenizer, token_ids: Sequence[int]) -> str:
         return tokenizer.decode(token_ids, skip_special_tokens=True)
@@ -263,7 +278,7 @@ class GroupAAsyncDecoder:
                     prev_tokens[row, : len(prev)] = torch.tensor(prev, dtype=torch.long, device=self.big_device)
                     prev_mask[row, : len(prev)] = 1
 
-            expanded_cache = self._repeat_cache(prefix_past, batch_size)
+            expanded_cache = self._cache_for_model(self._repeat_cache(prefix_past, batch_size))
             prefix_len = trigger_prefix_ids.shape[1]
             attention_mask = torch.cat(
                 [
@@ -276,7 +291,7 @@ class GroupAAsyncDecoder:
                 input_ids=prev_tokens,
                 attention_mask=attention_mask,
                 past_key_values=expanded_cache,
-                use_cache=False,
+                use_cache=True,
             )
             log_probs = F.log_softmax(outputs.logits.float(), dim=-1)
             for row, ids in enumerate(candidate_token_ids):

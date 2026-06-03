@@ -201,18 +201,12 @@ python3 train.py --config configs/smoke.yaml --dry-run
 python3 train.py --config configs/smoke.yaml
 ```
 
-长时间实验必须放在 `tmux` 里运行，避免本地电脑关机、断网或 SSH 终端关闭后服务器进程被中断。`smoke` 可以在前台验证；`first100`、完整 Group A/C/B、结果导出等长流程默认使用 `tmux`。
+长时间实验必须用 `nohup` 后台运行，避免本地电脑关机、断网或 SSH 终端关闭后服务器进程被中断。`smoke` 可以在前台验证；`first100`、完整 Group A/C/B、结果导出等长流程默认使用 `nohup`。
 
-推荐启动方式：
+推荐启动方式。先在普通 SSH 终端里准备环境、设置缓存 / token / 数据路径：
 
 ```bash
 cd /root/autodl-tmp/Project_2
-tmux new -s asps
-```
-
-进入 `tmux` 后再激活环境、设置缓存 / token / 数据路径并运行实验：
-
-```bash
 source /root/miniconda3/etc/profile.d/conda.sh
 conda activate gsm8k_strategyqa
 
@@ -224,31 +218,40 @@ read -s HF_TOKEN
 export HF_TOKEN
 
 export EXPORT_NAME="$(date +%Y%m%d-%H%M%S)_all_first100"
-RUN_SMOKE=0 EXPORT_NAME="$EXPORT_NAME" bash scripts/run_group_ac_experiments.sh
 ```
 
-安全断开 `tmux`：
-
-```text
-Ctrl-b d
-```
-
-重新连接：
+如需丢弃中断过的半截结果，先清理旧输出：
 
 ```bash
-tmux attach -t asps
+rm -rf outputs server_logs experiments/registry.csv server_run.log
 ```
 
-查看已有 `tmux` 会话：
+然后用 `nohup` 后台启动完整实验：
 
 ```bash
-tmux ls
+nohup bash scripts/run_group_ac_experiments.sh > server_run.log 2>&1 &
 ```
 
-如果会话名已存在，使用新名字，例如：
+确认后台进程仍在：
 
 ```bash
-tmux new -s asps-first100-v2
+ps -ef | grep run_group_ac_experiments | grep -v grep
+ps -ef | grep "python3 train.py" | grep -v grep
+```
+
+查看日志：
+
+```bash
+tail -f server_run.log
+```
+
+查看日志时按 `Ctrl-C` 只会退出 `tail -f`，不会停止 `nohup` 后台实验。只要进程是用上面的 `nohup ... &` 启动的，之后可以关闭 SSH 或本地电脑。
+
+如果需要停止后台实验，先查 PID，再手动 kill：
+
+```bash
+ps -ef | grep run_group_ac_experiments | grep -v grep
+kill <PID>
 ```
 
 Group A / Group C 第一轮调参配置位于：
