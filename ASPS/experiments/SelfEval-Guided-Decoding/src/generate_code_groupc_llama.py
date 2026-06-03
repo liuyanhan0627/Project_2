@@ -34,6 +34,7 @@ def parse_args():
         choices=["longer", "log_longer", "shorter", "none"],
         type=str,
     )
+    parser.add_argument("--switch_score_margin", default=0.0, type=float)
     parser.add_argument("--disable_prefix_cache_verify", default=False, action="store_true")
     parser.add_argument("--batch_size", default=1, type=int)
     parser.add_argument("--chatgpt", default=False, action="store_true")
@@ -116,6 +117,8 @@ def make_output_filename(args, dt_string):
         f"_draft{args.max_draft_tokens}_fallback{args.max_fallback_tokens}"
         f"_lw{_float_tag(args.length_weight_alpha)}_{args.length_weight_mode}.jsonl"
     )
+    if args.switch_score_margin > 0:
+        filename = filename.replace(".jsonl", f"_margin{_float_tag(args.switch_score_margin)}.jsonl")
     if args.reverse:
         filename = filename.replace(".jsonl", "_reverse.jsonl")
     return filename
@@ -189,6 +192,7 @@ if __name__ == "__main__":
         small_top_p=args.small_top_p,
         path_length_weight_alpha=args.length_weight_alpha,
         path_length_weight_mode=args.length_weight_mode,
+        switch_score_margin=args.switch_score_margin,
         use_prefix_cache_for_verify=not args.disable_prefix_cache_verify,
     )
     decoder = GroupAAsyncDecoder(big_model, big_tokenizer, small_model, small_tokenizer, decoder_config)

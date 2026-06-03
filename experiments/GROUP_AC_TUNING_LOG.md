@@ -694,3 +694,179 @@ scripts/run_group_ac_latency_recovery.sh
 ```bash
 nohup bash scripts/run_group_ac_latency_recovery.sh > server_run_latency_recovery.log 2>&1 &
 ```
+
+## Run 20260603-181452: Latency Recovery Results
+
+### Export Bundle
+
+结果在远端分支：
+
+```text
+origin/results/latency-recovery-first100-20260603
+```
+
+导出包路径：
+
+```text
+experiments/result_exports/20260603-181452_group_ac_latency_recovery_first100
+```
+
+本轮只分析新 6 个配置，并与 baseline、GroupB、上一轮最佳 `a_fast_k2` / `c_fast_k1` 对比。
+
+### Key Finding
+
+prefix-cache verify 仍然保持 100%，实现层面没有回退。
+
+本轮出现两个新的强候选：
+
+- Group A: `a_k2_h15_d32`
+- Group C: `c_k1_h14_a002`
+
+它们在 GSM8K / StrategyQA / MATH 的宏准确率都是 0.753，高于 baseline 的 0.743 和 GroupB 的 0.733。但平均延迟仍高于 baseline，尚未完全达到最终优化目标。
+
+### Auto-Accuracy Results
+
+| Config | GSM8K | StrategyQA | MATH | Macro Acc |
+|---|---:|---:|---:|---:|
+| Baseline | 0.77 | 0.79 | 0.67 | 0.743 |
+| GroupB | 0.80 | 0.73 | 0.67 | 0.733 |
+| `a_fast_k2` prev | 0.77 | 0.76 | 0.70 | 0.743 |
+| `a_k2_h14_d32` | 0.77 | 0.76 | 0.68 | 0.737 |
+| `a_k2_h14_d24` | 0.78 | 0.76 | 0.67 | 0.737 |
+| `a_k2_h15_d32` | 0.78 | 0.76 | 0.72 | 0.753 |
+| `c_fast_k1` prev | 0.78 | 0.78 | 0.67 | 0.743 |
+| `c_k1_a002` | 0.77 | 0.78 | 0.67 | 0.740 |
+| `c_k1_a003` | 0.77 | 0.78 | 0.66 | 0.737 |
+| `c_k1_h14_a002` | 0.78 | 0.79 | 0.69 | 0.753 |
+
+### Latency Results
+
+Baseline avg 仍使用 `job_duration_sec / sample_count` 估算；A/C 和 GroupB 使用 sample wall time。
+
+| Config | GSM8K Avg | StrategyQA Avg | MATH Avg | Macro Avg | Macro P90 |
+|---|---:|---:|---:|---:|---:|
+| Baseline | 3.42s | 1.61s | 3.37s | 2.80s | n/a |
+| GroupB | 11.73s | 7.40s | 9.32s | 9.48s | 11.57s |
+| `a_fast_k2` prev | 3.45s | 2.06s | 4.18s | 3.23s | 4.51s |
+| `a_k2_h14_d32` | 3.53s | 1.98s | 4.05s | 3.19s | 4.69s |
+| `a_k2_h14_d24` | 3.37s | 2.12s | 4.23s | 3.24s | 4.84s |
+| `a_k2_h15_d32` | 3.47s | 2.10s | 3.94s | 3.17s | 4.21s |
+| `c_fast_k1` prev | 3.57s | 1.92s | 4.81s | 3.43s | 6.49s |
+| `c_k1_a002` | 3.45s | 1.95s | 4.45s | 3.28s | 6.24s |
+| `c_k1_a003` | 3.41s | 1.85s | 4.50s | 3.25s | 6.22s |
+| `c_k1_h14_a002` | 3.37s | 2.11s | 4.36s | 3.28s | 5.26s |
+
+### Mechanism Summary
+
+| Config | Prefix Cache | Late Drop / Trigger | Switch / Trigger |
+|---|---:|---:|---:|
+| `a_fast_k2` prev | 100% | 0.24 | 0.23 |
+| `a_k2_h14_d32` | 100% | 0.27 | 0.22 |
+| `a_k2_h14_d24` | 100% | 0.24 | 0.21 |
+| `a_k2_h15_d32` | 100% | 0.25 | 0.20 |
+| `c_fast_k1` prev | 100% | 0.14 | 0.23 |
+| `c_k1_a002` | 100% | 0.14 | 0.21 |
+| `c_k1_a003` | 100% | 0.14 | 0.22 |
+| `c_k1_h14_a002` | 100% | 0.13 | 0.19 |
+
+### TruthfulQA Stop Check
+
+| Config | Avg Chars | Follow-up Q Count |
+|---|---:|---:|
+| `a_k2_h14_d32` | 2492.3 | 98/100 |
+| `a_k2_h14_d24` | 2480.0 | 98/100 |
+| `a_k2_h15_d32` | 2454.5 | 97/100 |
+| `c_k1_a002` | 2478.8 | 97/100 |
+| `c_k1_a003` | 2479.5 | 98/100 |
+| `c_k1_h14_a002` | 2456.9 | 96/100 |
+
+TruthfulQA 仍未修复，不能进入最终 accuracy 结论。
+
+### Decision
+
+Keep:
+
+- Group A 主线改为 `a_k2_h15_d32`。它 MATH 0.72，是目前 MATH 最强；宏准确率 0.753，macro P90 也是 A 组最好。
+- Group C 主线改为 `c_k1_h14_a002`。它 StrategyQA 0.79，打平 baseline，MATH 0.69，GSM8K 0.78，是目前 C 组最均衡。
+- `a_k2_h14_d24` 可作为 GSM8K 低延迟参考：GSM8K avg 3.37s，低于 baseline 3.42s，但 MATH 回落到 0.67。
+- `c_k1_a003` 可作为 StrategyQA 低延迟参考：StrategyQA avg 1.85s，但 MATH 0.66，不作为主线。
+
+Drop:
+
+- `a_k2_h14_d32`：accuracy 没有收益。
+- `c_k1_a002`：相比 `c_k1_h14_a002` 没有优势。
+- `c_k1_a003`：MATH 降到 0.66，除非只追 StrategyQA latency，否则不继续。
+
+Next:
+
+1. Group A 围绕 `a_k2_h15_d32` 微调，目标是保持 MATH >= 0.70，同时把 StrategyQA 从 0.76 拉回 0.78/0.79。
+2. Group C 围绕 `c_k1_h14_a002` 微调，目标是保持 StrategyQA 0.79，并把 MATH 从 0.69 推到 0.70+。
+3. 下一轮应优先尝试 switch margin / length-weight gate，而不是继续只调 k / entropy / alpha。
+4. TruthfulQA stop 条件必须单独修，否则它仍只能作为 latency / mechanism 数据。
+
+## Planned Run 20260604: Overnight Margin Sweep
+
+### Goal
+
+在上一轮 `a_k2_h15_d32` 和 `c_k1_h14_a002` 的基础上做 10 组夜跑。目标不是重新探索候选数，而是围绕当前最强点压延迟、恢复 StrategyQA/GSM8K，并验证 `switch_score_margin=0.02` 是否能减少无收益切换。
+
+本轮仍只跑 Group A / Group C，不重跑 baseline 和 GroupB。对照继续使用已记录的 first100 baseline / GroupB。
+
+### Code Change
+
+新增 `switch_score_margin`：
+
+```text
+only accept a small-model path if:
+small_path_avg_logprob >= fallback_avg_logprob + switch_score_margin
+```
+
+默认值为 `0.0`，因此旧配置行为不变。margin 配置使用 `0.02`。registry 新增 `switch_margin_rejections`，用于回收结果后判断 margin 是否实际减少了切换。夜跑脚本默认使用独立 `OUTPUT_ROOT=outputs/${EXPORT_NAME}`，避免导出包混入服务器上的旧输出。
+
+### Configs To Run
+
+| Config | Group | k | entropy | draft | fallback | alpha | margin | Purpose |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+| `a_k2_h15_d24` | A | 2 | 1.5 | 24 | 32 | - | 0 | 从 `a_k2_h15_d32` 压 draft，目标降低 MATH/GSM 延迟 |
+| `a_k2_h16_d24` | A | 2 | 1.6 | 24 | 32 | - | 0 | 更高触发率 + 短 draft，尝试补 StrategyQA/GSM 准确率 |
+| `a_k2_h15_d20` | A | 2 | 1.5 | 20 | 32 | - | 0 | 激进低延迟组，验证 draft 进一步缩短是否崩准确率 |
+| `a_k2_h16_d32` | A | 2 | 1.6 | 32 | 32 | - | 0 | 准确率上限组，看 h16+d32 是否超过 `a_k2_h15_d32` |
+| `a_k2_h15_d24_margin` | A | 2 | 1.5 | 24 | 32 | - | 0.02 | 延迟恢复组，验证 margin 是否减少无收益 switch |
+| `c_k1_h15_a002` | C | 1 | 1.5 | 32 | 32 | 0.02 | 0 | 在 C 最优 alpha 上提高 entropy，尝试补 MATH/GSM |
+| `c_k1_h14_a0015` | C | 1 | 1.4 | 32 | 32 | 0.015 | 0 | 降低 length weight，目标减少 C 的额外延迟 |
+| `c_k1_h14_a002_margin` | C | 1 | 1.4 | 32 | 32 | 0.02 | 0.02 | 以当前 C 主线加 margin，重点看延迟尾部 |
+| `c_k1_h15_a0015` | C | 1 | 1.5 | 32 | 32 | 0.015 | 0 | h15 + 低 alpha 平衡组 |
+| `c_k1_h15_a002_margin` | C | 1 | 1.5 | 32 | 32 | 0.02 | 0.02 | h15 + 当前 alpha + margin，验证准确率/延迟平衡 |
+
+### Local Preparation
+
+已在本地准备：
+
+```text
+configs/group_ac/a_k2_h15_d24.yaml
+configs/group_ac/a_k2_h16_d24.yaml
+configs/group_ac/a_k2_h15_d20.yaml
+configs/group_ac/a_k2_h16_d32.yaml
+configs/group_ac/a_k2_h15_d24_margin.yaml
+configs/group_ac/c_k1_h15_a002.yaml
+configs/group_ac/c_k1_h14_a0015.yaml
+configs/group_ac/c_k1_h14_a002_margin.yaml
+configs/group_ac/c_k1_h15_a0015.yaml
+configs/group_ac/c_k1_h15_a002_margin.yaml
+scripts/run_group_ac_overnight_sweep.sh
+```
+
+服务器运行命令：
+
+```bash
+nohup bash scripts/run_group_ac_overnight_sweep.sh > server_run_overnight_margin.log 2>&1 &
+```
+
+### Decision Rules
+
+1. A 组优先看 `a_k2_h15_d24_margin` 能否在不丢 MATH 的情况下压 macro avg / P90。
+2. A 组若 `a_k2_h16_d32` 准确率明显提升，但延迟高于 baseline，后续再试 h16+d24+margin。
+3. C 组优先看 `c_k1_h14_a002_margin` 是否保持 StrategyQA 0.79 且压低 C 的 P90。
+4. 若 `switch_margin_rejections` 很低，说明 margin=0.02 太小；下一轮可以试 0.05。
+5. 若 `switch_margin_rejections` 很高但准确率下降，说明 margin 过保守，应回退到 0.01 或改成 dataset-specific margin。
+6. TruthfulQA 仍只作为 latency / generation-shape 参考，不纳入最终 accuracy 结论。

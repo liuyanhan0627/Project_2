@@ -7,6 +7,7 @@ RUN_SMOKE="${RUN_SMOKE:-1}"
 DRY_RUN="${DRY_RUN:-0}"
 EXPORT_RESULTS="${EXPORT_RESULTS:-1}"
 EXPORT_NAME="${EXPORT_NAME:-$(date +%Y%m%d-%H%M%S)_group_ac_first100}"
+export OUTPUT_ROOT="${OUTPUT_ROOT:-outputs}"
 
 if [[ -n "${RUN_CONFIGS:-}" ]]; then
   read -r -a CONFIG_NAMES <<< "${RUN_CONFIGS}"
@@ -43,17 +44,18 @@ for name in "${CONFIG_NAMES[@]}"; do
   run_train "${CONFIG_DIR}/${name}.yaml" "${name}"
 done
 
-python3 scripts/collect_results.py --outputs outputs --registry experiments/registry.csv
+python3 scripts/collect_results.py --outputs "${OUTPUT_ROOT}" --registry experiments/registry.csv
 
 if [[ "${EXPORT_RESULTS}" == "1" ]]; then
   python3 scripts/export_results_for_github.py \
-    --outputs outputs \
+    --outputs "${OUTPUT_ROOT}" \
     --registry experiments/registry.csv \
     --export-root experiments/result_exports \
     --name "${EXPORT_NAME}"
 fi
 
 echo "=== Done ==="
+echo "Outputs: ${OUTPUT_ROOT}"
 echo "Registry: experiments/registry.csv"
 if [[ "${EXPORT_RESULTS}" == "1" ]]; then
   echo "Export: experiments/result_exports/${EXPORT_NAME}"

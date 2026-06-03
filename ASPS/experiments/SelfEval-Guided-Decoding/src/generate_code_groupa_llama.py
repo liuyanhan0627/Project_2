@@ -27,6 +27,7 @@ def parse_args():
     parser.add_argument("--big_top_p", default=1.0, type=float)
     parser.add_argument("--small_temperature", default=0.7, type=float)
     parser.add_argument("--small_top_p", default=0.9, type=float)
+    parser.add_argument("--switch_score_margin", default=0.0, type=float)
     parser.add_argument("--disable_prefix_cache_verify", default=False, action="store_true")
     parser.add_argument("--batch_size", default=1, type=int)
     parser.add_argument("--chatgpt", default=False, action="store_true")
@@ -95,6 +96,10 @@ def model_tag(name):
     return tail.replace("Meta-", "").replace("/", "_")
 
 
+def _float_tag(value):
+    return str(value).replace("-", "m").replace(".", "p")
+
+
 def make_output_filename(args, dt_string):
     big = model_tag(args.big_model_name)
     small = model_tag(args.small_model_name)
@@ -104,6 +109,8 @@ def make_output_filename(args, dt_string):
         f"_entropy{args.entropy_threshold}_k{args.draft_candidates}"
         f"_draft{args.max_draft_tokens}_fallback{args.max_fallback_tokens}.jsonl"
     )
+    if args.switch_score_margin > 0:
+        filename = filename.replace(".jsonl", f"_margin{_float_tag(args.switch_score_margin)}.jsonl")
     if args.reverse:
         filename = filename.replace(".jsonl", "_reverse.jsonl")
     return filename
@@ -179,6 +186,7 @@ if __name__ == "__main__":
         big_top_p=args.big_top_p,
         small_temperature=args.small_temperature,
         small_top_p=args.small_top_p,
+        switch_score_margin=args.switch_score_margin,
         use_prefix_cache_for_verify=not args.disable_prefix_cache_verify,
     )
     decoder = GroupAAsyncDecoder(big_model, big_tokenizer, small_model, small_tokenizer, decoder_config)

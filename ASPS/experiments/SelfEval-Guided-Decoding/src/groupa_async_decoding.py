@@ -28,6 +28,7 @@ class GroupADecodingConfig:
     small_top_p: float = 0.9
     path_length_weight_alpha: float = 0.0
     path_length_weight_mode: str = "none"
+    switch_score_margin: float = 0.0
     stop_strings: Sequence[str] = field(default_factory=lambda: ("\n\n\n",))
     use_prefix_cache_for_verify: bool = True
     punctuation: Sequence[str] = field(
@@ -362,6 +363,8 @@ class GroupAAsyncDecoder:
             "candidate_length_weights": [],
             "candidate_weighted_scores": [],
             "length_weight_overrides": 0,
+            "switch_margin_rejections": 0,
+            "switch_margin_gaps": [],
             "accepted_tokens_per_verify": [],
             "fallback_path_lengths": [],
             "draft_path_lengths": [],
@@ -424,14 +427,22 @@ class GroupAAsyncDecoder:
                 for score, weight in zip(avg_logprobs, length_weights)
             ]
             best_base_idx = max(range(len(avg_logprobs)), key=lambda i: avg_logprobs[i])
-            best_idx = max(range(len(weighted_scores)), key=lambda i: weighted_scores[i])
+            best_weighted_idx = max(range(len(weighted_scores)), key=lambda i: weighted_scores[i])
+            best_idx = best_weighted_idx
+            if self.config.switch_score_margin > 0 and "fallback" in labels and labels[best_weighted_idx] != "fallback":
+                fallback_idx = labels.index("fallback")
+                switch_gap = avg_logprobs[best_weighted_idx] - avg_logprobs[fallback_idx]
+                metrics["switch_margin_gaps"].append(float(switch_gap))
+                if switch_gap < self.config.switch_score_margin:
+                    metrics["switch_margin_rejections"] += 1
+                    best_idx = fallback_idx
             best_label = labels[best_idx]
             metrics["accepted_tokens_per_verify"].append(len(candidates[best_idx]))
             if self.config.path_length_weight_alpha > 0 and self.config.path_length_weight_mode != "none":
                 metrics["candidate_base_scores"].append(dict(zip(labels, avg_logprobs)))
                 metrics["candidate_length_weights"].append(dict(zip(labels, length_weights)))
                 metrics["candidate_weighted_scores"].append(dict(zip(labels, weighted_scores)))
-                if best_idx != best_base_idx:
+                if best_weighted_idx != best_base_idx:
                     metrics["length_weight_overrides"] += 1
 
             if best_label == "fallback":
