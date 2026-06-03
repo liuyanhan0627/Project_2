@@ -451,3 +451,246 @@ nohup bash scripts/run_group_ac_k_sweep.sh > server_run_k_sweep.log 2>&1 &
 2. 若 `k=1` switch rate 过低或 accuracy 下降超过 1 个百分点，比较 `k=2` 与 `k=3`。
 3. Group C 要单独看 MATH；如果 `c_fast_k*` 仍压低 MATH accuracy，下一轮改为更保守的长度权重或加入 score-margin gate。
 4. TruthfulQA 在 stop / judge 修复前仍只看机制指标，不纳入 accuracy 结论。
+
+## Run 20260603-110746: Candidate Count k Sweep Results
+
+### Export Bundle
+
+```text
+experiments/result_exports/20260603-110746_group_ac_k_sweep_first100
+```
+
+该导出包包含本次 k sweep 的 6 个新 run，也包含之前导出的 baseline / GroupB / 旧 A/C run。下面只把本轮新 run 与必要对照放在一起分析。
+
+### Key Finding
+
+prefix-cache verify 修复已生效。本轮 6 个新配置在 GSM8K、StrategyQA、MATH、TruthfulQA 上的 `verify_modes.prefix_cache / verify_calls` 都是 100%。
+
+同一组参数的 `k=3` 与旧 `a_fast` / `c_fast` 相比，延迟明显下降，说明旧结果的 A/C latency 主要被 full-batch verify 拖慢。
+
+### Auto-Accuracy Results
+
+| Dataset | Baseline Acc | GroupB Acc | A k1 | A k2 | A k3 | C k1 | C k2 | C k3 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| GSM8K | 0.77 | 0.80 | 0.77 | 0.77 | 0.78 | 0.78 | 0.78 | 0.77 |
+| StrategyQA | 0.79 | 0.73 | 0.78 | 0.76 | 0.78 | 0.78 | 0.76 | 0.77 |
+| MATH | 0.67 | 0.67 | 0.67 | 0.70 | 0.66 | 0.67 | 0.67 | 0.62 |
+
+本轮仍没有任何 Group A/C 配置在三个自动判分数据集上同时超过 `max(Baseline, GroupB)`。
+
+### Latency Results
+
+Baseline 的 avg time 用 `job_duration_sec / sample_count` 估算；A/C 和 GroupB 使用 registry 中的 sample wall time。
+
+| Dataset | Baseline Avg | GroupB Avg | A k1 | A k2 | A k3 | C k1 | C k2 | C k3 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| GSM8K | 3.42s | 11.73s | 3.44s | 3.45s | 3.56s | 3.57s | 3.47s | 3.41s |
+| StrategyQA | 1.61s | 7.40s | 1.95s | 2.06s | 2.01s | 1.92s | 2.24s | 2.17s |
+| MATH | 3.37s | 9.32s | 4.25s | 4.18s | 4.39s | 4.81s | 4.30s | 4.52s |
+| TruthfulQA | 18.03s | 20.62s | 15.20s | 15.76s | 16.23s | 15.61s | 15.12s | 15.41s |
+
+结论：新 A/C 已经显著快于 GroupB；GSM8K 已经接近 baseline，C k3 略低于 baseline；StrategyQA 和 MATH 仍慢于 baseline。TruthfulQA 延迟低于 baseline，但因 stop / judge 未修复，不能当质量结论。
+
+### Mechanism Summary
+
+| Config | Macro Acc | Avg Time | P90 Mean | Prefix Cache | Late Drop / Trigger | Switch / Trigger |
+|---|---:|---:|---:|---:|---:|---:|
+| `a_fast_k1` | 0.740 | 3.21s | 4.96s | 100% | 0.12 | 0.21 |
+| `a_fast_k2` | 0.743 | 3.23s | 4.51s | 100% | 0.24 | 0.23 |
+| `a_fast_k3` | 0.740 | 3.32s | 5.42s | 100% | 0.36 | 0.23 |
+| `c_fast_k1` | 0.743 | 3.43s | 6.49s | 100% | 0.14 | 0.23 |
+| `c_fast_k2` | 0.737 | 3.34s | 5.24s | 100% | 0.26 | 0.22 |
+| `c_fast_k3` | 0.720 | 3.37s | 5.35s | 100% | 0.36 | 0.22 |
+
+宏平均只计算 GSM8K / StrategyQA / MATH。
+
+### TruthfulQA Stop Check
+
+| Config | Avg Chars | Follow-up Q Count |
+|---|---:|---:|
+| `a_fast_k1` | 2481.2 | 98/100 |
+| `a_fast_k2` | 2481.0 | 98/100 |
+| `a_fast_k3` | 2468.0 | 97/100 |
+| `c_fast_k1` | 2476.4 | 98/100 |
+| `c_fast_k2` | 2476.0 | 97/100 |
+| `c_fast_k3` | 2474.4 | 98/100 |
+
+TruthfulQA 仍然大量生成后续 `Q:` / `A:` 示例。速度改善不代表质量改善，下一步仍要先修 stop 条件和 judge。
+
+### Decision
+
+Keep:
+
+- Group A：优先保留 `a_fast_k2`。它是本轮 A 组宏平均最高，MATH 达到 0.70，超过 baseline / GroupB。
+- Group A：保留 `a_fast_k1` 作为低延迟备选。它 late drop 最低，StrategyQA 延迟最好，但 MATH 只打平 baseline。
+- Group C：保留 `c_fast_k1` 作为 C 组下一步基底。它宏平均最高，late drop 较低，MATH 没有掉到 0.62/0.65。
+
+Drop:
+
+- `c_fast_k3`：MATH 0.62，且 late drop 高，不适合继续扩展。
+- `a_fast_k3`：不是完全不能用，但在本轮没有带来宏平均收益，MATH 低于 baseline。
+- `c_fast_k2`：GSM8K/MATH 可用，但 StrategyQA 掉到 0.76，暂不作为主线。
+
+Next:
+
+1. 以 `a_fast_k2` 为主线，试更低延迟版本：`entropy_threshold=1.4/1.5`、`draft_candidates=2`、`max_draft_tokens=24/32`。
+2. 以 `c_fast_k1` 为 C 组主线，降低长度权重风险：`length_weight_alpha=0.02/0.03` 或加入 score-margin gate。
+3. 在扩大调参前修 TruthfulQA stop 条件，否则 TruthfulQA 的 accuracy 仍不可用。
+
+## Diagnosis 20260603: Why `c_fast_k2` Is Slower Than `a_fast_k2`
+
+### Observation
+
+直觉上，Group C 的长度权重应该偏向更长候选，从而减少后续触发次数并降低延迟。但本轮 `c_fast_k2` 在 GSM8K / StrategyQA / MATH 上没有稳定快于 `a_fast_k2`。
+
+| Dataset | A k2 Avg | C k2 Avg | Difference | A k2 Acc | C k2 Acc |
+|---|---:|---:|---:|---:|---:|
+| GSM8K | 3.45s | 3.47s | +0.02s | 0.77 | 0.78 |
+| StrategyQA | 2.06s | 2.24s | +0.19s | 0.76 | 0.76 |
+| MATH | 4.18s | 4.30s | +0.12s | 0.70 | 0.67 |
+| TruthfulQA | 15.76s | 15.12s | -0.64s | n/a | n/a |
+
+TruthfulQA 虽然 C k2 更快，但 stop / judge 未修复，不能当质量结论。
+
+### Mechanism Comparison
+
+| Dataset | Metric | A k2 | C k2 | Interpretation |
+|---|---|---:|---:|---|
+| StrategyQA | triggers | 330 | 345 | C 触发更多 |
+| StrategyQA | verify calls | 286 | 291 | C verify 更多 |
+| StrategyQA | late drops | 44 | 54 | C late drop 更多 |
+| StrategyQA | avg output chars | 299.3 | 324.1 | C 输出更长 |
+| MATH | triggers | 538 | 543 | C 触发更多 |
+| MATH | verify calls | 371 | 364 | C verify 略少 |
+| MATH | late drops | 167 | 179 | C late drop 更多 |
+| MATH | avg output chars | 376.8 | 390.6 | C 输出更长 |
+| MATH | P90 | 6.58s | 8.42s | C 长尾更差 |
+
+### Length Weight Participation
+
+| Dataset | C k2 Length Overrides |
+|---|---:|
+| GSM8K | 0 |
+| StrategyQA | 2 |
+| MATH | 3 |
+| TruthfulQA | 13 |
+
+结论：`c_fast_k2` 大多数时候并没有真正改变候选选择；少数 override 又可能把路径推向更长、更不稳定的生成。因此它没有稳定减少 trigger / verify，反而在 StrategyQA 和 MATH 上增加了输出长度和 late drop。
+
+### Decision
+
+- `c_fast_k2` 不作为下一轮主线。
+- Group C 继续以 `c_fast_k1` 为主线，因为它宏平均更好，late drop 更低，MATH 没有明显崩掉。
+- 下一轮 Group C 不再直接使用 `alpha=0.05 longer` 做主线，应降低长度权重或加入 gate。
+
+## Planned Next Tuning 20260603: Latency Recovery With Accuracy Guard
+
+### Goal
+
+在 prefix-cache 已修复的基础上，继续优化 Group A 和 Group C，使它们更接近目标：
+
+1. accuracy 至少不低于 `max(Baseline, GroupB)`。
+2. avg / P90 latency 继续向 baseline 靠近，同时保持显著优于 GroupB。
+3. 保持 `prefix_cache >= 95%`。
+4. 避免 StrategyQA 和 MATH 因小模型切换或长度权重掉分。
+
+### Recommended Group A Search
+
+以 `a_fast_k2` 为主线。它是目前 A 组最接近目标的配置：MATH 0.70 超过 baseline / GroupB，宏平均打平 baseline。
+
+| Candidate | k | Entropy | Draft Tokens | Fallback Tokens | Small Temp | Purpose |
+|---|---:|---:|---:|---:|---:|---|
+| `a_k2_h14_d32` | 2 | 1.4 | 32 | 32 | 0.5 | 减少触发，观察延迟是否低于当前 A k2，同时保留 MATH 收益 |
+| `a_k2_h15_d32` | 2 | 1.5 | 32 | 32 | 0.5 | 更强 latency recovery，风险是切换减少后 MATH 收益消失 |
+| `a_k2_h13_d24` | 2 | 1.3 | 24 | 32 | 0.5 | 保持当前触发策略，但让 draft 更快返回，目标是降低 late drop / P90 |
+| `a_k2_h14_d24` | 2 | 1.4 | 24 | 32 | 0.5 | 同时减少触发和 late drop，作为低延迟候选 |
+
+优先级：先跑 `a_k2_h14_d32` 和 `a_k2_h14_d24`。如果准确率不掉，再跑 `h15`。
+
+### Recommended Group C Search
+
+以 `c_fast_k1` 为主线。当前 `alpha=0.05 longer` 对 MATH 有风险，下一轮应更保守。
+
+| Candidate | k | Entropy | Draft Tokens | Fallback Tokens | Length Alpha | Mode | Purpose |
+|---|---:|---:|---:|---:|---:|---|---|
+| `c_k1_a002` | 1 | 1.3 | 32 | 32 | 0.02 | longer | 降低长度权重，避免 MATH 掉分 |
+| `c_k1_a003` | 1 | 1.3 | 32 | 32 | 0.03 | longer | 在保守和收益之间折中 |
+| `c_k1_h14_a002` | 1 | 1.4 | 32 | 32 | 0.02 | longer | 减少触发，压低延迟 |
+| `c_k1_h14_a003` | 1 | 1.4 | 32 | 32 | 0.03 | longer | 观察 C 是否能在少触发下保留 StrategyQA/GSM8K 收益 |
+
+如果愿意改代码，优先新增 score-margin gate：
+
+```text
+只在 abs(best_base_score - fallback_score) <= 0.03 时应用 length weight。
+```
+
+这样可以避免长度权重在大模型明显偏好 fallback 时强行 override。
+
+### Stop Before Broader Search
+
+TruthfulQA 的输出停止仍坏：
+
+```text
+97-98/100 samples contain follow-up Q/A generations
+```
+
+在下一轮大规模搜索前，应单独修：
+
+```text
+stop_strings = ("\n\nQ:", "\nQ:", "\n\nQuestion:", "\nQuestion:")
+```
+
+并在保存结果前截断 follow-up Q/Question marker。否则 TruthfulQA 只能看机制指标，不能进入最终 accuracy 表。
+
+### Next Run Recommendation
+
+建议下一轮先跑 6 个配置：
+
+```text
+Group A:
+- a_k2_h14_d32
+- a_k2_h14_d24
+- a_k2_h15_d32
+
+Group C:
+- c_k1_a002
+- c_k1_a003
+- c_k1_h14_a002
+```
+
+如果服务器时间有限，先跑 4 个：
+
+```text
+a_k2_h14_d32
+a_k2_h14_d24
+c_k1_a002
+c_k1_h14_a002
+```
+
+判定规则：
+
+1. GSM8K：需要接近 0.80，至少不低于 0.78。
+2. StrategyQA：至少 0.79 才算超过/打平 baseline 目标。
+3. MATH：优先保留 >= 0.70 的 A 配置；C 至少不能低于 0.67。
+4. 延迟：GSM8K 目标 <= 3.42s；StrategyQA 目标 <= 1.61s 较难，但应继续压到 <= 1.9s；MATH 目标先压到 <= 4.0s。
+5. 若 prefix-cache 低于 95%，停止调参，先修实现。
+
+### Local Preparation
+
+已在本地准备 6 个配置和专用脚本：
+
+```text
+configs/group_ac/a_k2_h14_d32.yaml
+configs/group_ac/a_k2_h14_d24.yaml
+configs/group_ac/a_k2_h15_d32.yaml
+configs/group_ac/c_k1_a002.yaml
+configs/group_ac/c_k1_a003.yaml
+configs/group_ac/c_k1_h14_a002.yaml
+scripts/run_group_ac_latency_recovery.sh
+```
+
+服务器运行命令：
+
+```bash
+nohup bash scripts/run_group_ac_latency_recovery.sh > server_run_latency_recovery.log 2>&1 &
+```
