@@ -1,0 +1,8 @@
+{
+  "config_path": "/root/autodl-tmp/Project_2/configs/group_ac/a_k2_h15_d16.yaml",
+  "dry_run": false,
+  "finished_at": "2026-06-04T13:24:36",
+  "run_dir": "/root/autodl-tmp/Project_2/outputs/20260604-124023_group_ac_daytime_k2c_first100/20260604-124023_groupa_k2_h15_d16_first100",
+  "started_at": "2026-06-04T12:40:23",
+  "status": "completed"
+}
