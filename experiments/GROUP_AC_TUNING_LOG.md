@@ -968,3 +968,112 @@ nohup bash scripts/run_group_ac_k2_refine_sweep.sh > server_run_k2_refine.log 2>
 4. C 组：`alpha=0.03` 需要重点看 `length_weight_overrides`，若仍接近 1%，说明 length weight 本身不是当前瓶颈。
 5. 本轮所有 C 配置都固定 `k=2`；若仍无法超过 k=1 主线，需要在报告中明确 k=2 已按轻量化多路径方案验证。
 6. TruthfulQA 仍只作为 latency / generation-shape 参考。
+
+## Result 20260605: K2 Refine Sweep
+
+### Export
+
+```text
+experiments/result_exports/20260604-210303_group_ac_k2_refine_first100
+```
+
+完整性检查：
+
+- `registry.csv`: 24 rows
+- `metrics.json`: 6 files
+- `jsonl`: 24 files
+- `summary.txt`: 24 files
+
+### Main Result
+
+| Config | GSM8K | StrategyQA | MATH | Macro Acc | Macro Avg | Macro P90 |
+|---|---:|---:|---:|---:|---:|---:|
+| Baseline | 0.77 | 0.79 | 0.67 | 0.743 | 2.80s | n/a |
+| GroupB | 0.80 | 0.73 | 0.67 | 0.733 | 9.48s | 11.57s |
+| `groupa_k2_h145_d20` | 0.78 | 0.77 | 0.68 | 0.743 | 3.07s | 4.24s |
+| `groupa_k2_h15_d18` | 0.77 | 0.76 | 0.70 | 0.743 | 3.20s | 4.61s |
+| `groupa_k2_h15_d20_t04` | 0.78 | 0.74 | 0.70 | 0.740 | 3.21s | 4.61s |
+| `groupc_k2_h145_a002_d20_margin01` | 0.77 | 0.78 | 0.68 | 0.743 | 3.07s | 4.46s |
+| `groupc_k2_h145_a002_d16_margin005` | 0.78 | 0.77 | 0.67 | 0.740 | 3.06s | 4.49s |
+| `groupc_k2_h145_a003_d16_margin01` | 0.77 | 0.79 | 0.69 | 0.750 | 3.00s | 4.39s |
+
+### Interpretation
+
+- 本轮最佳新配置是 `groupc_k2_h145_a003_d16_margin01`，也是当前最好的 C k=2 主线。
+- 它比 GroupB 明显更好：macro accuracy 更高，macro average latency 低约 6.49s。
+- 相比 baseline，它 macro accuracy 高 0.007，但 macro average latency 仍高约 0.20s；最终目标还没有完全达成。
+- A 组本轮没有刷新最优。旧 `groupa_k2_h15_d20` 仍是 A 主线：GSM8K 0.78 / StrategyQA 0.76 / MATH 0.72 / Macro Acc 0.753 / Macro Avg 3.10s。
+- `small_temperature=0.4` 不继续：`groupa_k2_h15_d20_t04` 的 StrategyQA 掉到 0.74。
+- C 组 `alpha=0.03` 优于 `alpha=0.02`；`length_weight_overrides` 仍然低，但综合准确率/延迟最优。
+
+### Mechanism Notes
+
+| Config | Late Drop / Trigger | Switch / Trigger | Margin / Trigger | Length / Verify |
+|---|---:|---:|---:|---:|
+| `groupa_k2_h145_d20` | 0.218 | 0.210 | 0.000 | 0.000 |
+| `groupa_k2_h15_d18` | 0.216 | 0.201 | 0.000 | 0.000 |
+| `groupa_k2_h15_d20_t04` | 0.213 | 0.224 | 0.000 | 0.000 |
+| `groupc_k2_h145_a002_d20_margin01` | 0.223 | 0.065 | 0.133 | 0.009 |
+| `groupc_k2_h145_a002_d16_margin005` | 0.197 | 0.071 | 0.120 | 0.019 |
+| `groupc_k2_h145_a003_d16_margin01` | 0.194 | 0.066 | 0.121 | 0.012 |
+
+TruthfulQA 仍有 96-97/100 个样本出现 follow-up Q/A 形态，继续不纳入自动 accuracy 结论。
+
+## Planned Run 20260605: K2 Overnight Mix Sweep
+
+### Goal
+
+今晚跑 10 组，全部固定 `k=2`。6 组围绕当前最优点继续优化，4 组相对发散探索。
+
+当前主线：
+
+- Group A: `a_k2_h15_d20`，优势是 MATH 0.72 / Macro Acc 0.753，问题是 StrategyQA 0.76。
+- Group C: `c_k2_h145_a003_d16_margin01`，优势是 StrategyQA 0.79 / Macro Avg 3.00s，问题是 MATH 0.69。
+
+### Configs To Run
+
+| Config | Group | k | entropy | draft | fallback | alpha | margin | Type | Purpose |
+|---|---|---:|---:|---:|---:|---:|---:|---|---|
+| `a_k2_h153_d20` | A | 2 | 1.53 | 20 | 32 | - | 0 | refine | 在 h1.5/h1.55 中间找点，尝试补 StrategyQA 且保 MATH |
+| `a_k2_h155_d18` | A | 2 | 1.55 | 18 | 32 | - | 0 | refine | 用更短 draft 抵消 h1.55 的延迟，争取 StrategyQA 提升 |
+| `a_k2_h155_d20_margin002` | A | 2 | 1.55 | 20 | 32 | - | 0.002 | refine | 轻微 margin，过滤低置信 switch，避免 0.005 太重 |
+| `c_k2_h145_a003_d18_margin01` | C | 2 | 1.45 | 18 | 32 | 0.03 | 0.01 | refine | 当前 C 最优基础上加 draft，冲 MATH 0.70 |
+| `c_k2_h145_a003_d16_margin005` | C | 2 | 1.45 | 16 | 32 | 0.03 | 0.005 | refine | 降低 margin，让小模型多一点探索机会 |
+| `c_k2_h145_a004_d16_margin01` | C | 2 | 1.45 | 16 | 32 | 0.04 | 0.01 | refine | 继续验证 alpha 增大是否改善 C 的选择质量 |
+| `a_k2_h16_d20` | A | 2 | 1.60 | 20 | 32 | - | 0 | explore | 冲 StrategyQA，上轮 h16 对 StrategyQA 有帮助 |
+| `a_k2_h15_d20_f24` | A | 2 | 1.50 | 20 | 24 | - | 0 | explore | 缩短 fallback，专门看能不能压 MATH/StrategyQA 延迟 |
+| `c_k2_h145_a003_d14_margin01` | C | 2 | 1.45 | 14 | 32 | 0.03 | 0.01 | explore | 更激进压 C 延迟，看准确率底线 |
+| `c_k2_h15_a003_d16_margin01` | C | 2 | 1.50 | 16 | 32 | 0.03 | 0.01 | explore | 减少触发，验证 C 能否更快且保持 StrategyQA |
+
+### Local Preparation
+
+已在本地准备：
+
+```text
+configs/group_ac/a_k2_h153_d20.yaml
+configs/group_ac/a_k2_h155_d18.yaml
+configs/group_ac/a_k2_h155_d20_margin002.yaml
+configs/group_ac/c_k2_h145_a003_d18_margin01.yaml
+configs/group_ac/c_k2_h145_a003_d16_margin005.yaml
+configs/group_ac/c_k2_h145_a004_d16_margin01.yaml
+configs/group_ac/a_k2_h16_d20.yaml
+configs/group_ac/a_k2_h15_d20_f24.yaml
+configs/group_ac/c_k2_h145_a003_d14_margin01.yaml
+configs/group_ac/c_k2_h15_a003_d16_margin01.yaml
+scripts/run_group_ac_k2_overnight_mix_sweep.sh
+```
+
+服务器运行命令：
+
+```bash
+nohup bash scripts/run_group_ac_k2_overnight_mix_sweep.sh > server_run_k2_overnight_mix.log 2>&1 &
+```
+
+### Decision Rules
+
+1. C 组优先看 `c_k2_h145_a003_d18_margin01` 是否把 MATH 推到 0.70，且 Macro Avg 不超过 3.10s。
+2. C 组若 `c_k2_h145_a004_d16_margin01` 继续提升 MATH/StrategyQA，下一轮把 alpha 0.04 设为 C k=2 主线。
+3. A 组优先看 `a_k2_h153_d20` 是否把 StrategyQA 提到 0.77/0.78，同时保住 MATH 0.71/0.72。
+4. A 组若 `a_k2_h15_d20_f24` 准确率不崩，则继续沿 fallback 24 压延迟。
+5. 若 C d14 accuracy 明显下降，则不再继续压 draft；说明 C k=2 的 draft 下限约在 16。
+6. TruthfulQA 仍只作为 latency / generation-shape 参考，不纳入最终 accuracy 结论。

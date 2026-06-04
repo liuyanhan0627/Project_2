@@ -34,6 +34,35 @@ Default configs:
 
 This script sets `RUN_SMOKE=0` and excludes Baseline / Group B by default.
 
+## K2 overnight mix sweep
+
+This sweep keeps `k=2` for both Group A and Group C. Six configs refine the
+current best lines (`a_k2_h15_d20` and `c_k2_h145_a003_d16_margin01`), while
+four configs explore more aggressive latency or trigger changes. By default it
+writes to `outputs/${EXPORT_NAME}` so the export bundle only contains this
+sweep.
+
+Run command:
+
+```bash
+bash scripts/run_group_ac_k2_overnight_mix_sweep.sh
+```
+
+Default configs:
+
+1. `a_k2_h153_d20.yaml`: Group A, `k=2`, entropy `1.53`, draft `20`.
+2. `a_k2_h155_d18.yaml`: Group A, `k=2`, entropy `1.55`, draft `18`.
+3. `a_k2_h155_d20_margin002.yaml`: Group A, `k=2`, entropy `1.55`, draft `20`, margin `0.002`.
+4. `c_k2_h145_a003_d18_margin01.yaml`: Group C, `k=2`, entropy `1.45`, draft `18`, alpha `0.03`, margin `0.01`.
+5. `c_k2_h145_a003_d16_margin005.yaml`: Group C, `k=2`, entropy `1.45`, draft `16`, alpha `0.03`, margin `0.005`.
+6. `c_k2_h145_a004_d16_margin01.yaml`: Group C, `k=2`, entropy `1.45`, draft `16`, alpha `0.04`, margin `0.01`.
+7. `a_k2_h16_d20.yaml`: Group A, `k=2`, entropy `1.6`, draft `20`.
+8. `a_k2_h15_d20_f24.yaml`: Group A, `k=2`, entropy `1.5`, draft `20`, fallback `24`.
+9. `c_k2_h145_a003_d14_margin01.yaml`: Group C, `k=2`, entropy `1.45`, draft `14`, alpha `0.03`, margin `0.01`.
+10. `c_k2_h15_a003_d16_margin01.yaml`: Group C, `k=2`, entropy `1.5`, draft `16`, alpha `0.03`, margin `0.01`.
+
+This script sets `RUN_SMOKE=0` and excludes Baseline / Group B by default.
+
 ## Daytime C-k2 sweep
 
 This sweep keeps Group A on the best low-latency k=2 line, and sets every
