@@ -34,6 +34,31 @@ Default configs:
 
 This script sets `RUN_SMOKE=0` and excludes Baseline / Group B by default.
 
+## Daytime C-k2 sweep
+
+This sweep keeps Group A on the best low-latency k=2 line, and sets every
+Group C config to `k=2` to test lightweight multi-path exploration. Compared
+with the earlier `c_fast_k2`, these C configs use shorter drafts, lower
+length-weight alpha, and small switch margins.
+
+Run command:
+
+```bash
+bash scripts/run_group_ac_daytime_k2c_sweep.sh
+```
+
+Default configs:
+
+1. `a_k2_h15_d16.yaml`: Group A, `k=2`, entropy `1.5`, draft `16`.
+2. `a_k2_h15_d20_margin005.yaml`: Group A, `k=2`, entropy `1.5`, draft `20`, margin `0.005`.
+3. `a_k2_h155_d20.yaml`: Group A, `k=2`, entropy `1.55`, draft `20`.
+4. `c_k2_h14_a002_d16_margin005.yaml`: Group C, `k=2`, entropy `1.4`, draft `16`, alpha `0.02`, margin `0.005`.
+5. `c_k2_h14_a002_d16_margin01.yaml`: Group C, `k=2`, entropy `1.4`, draft `16`, alpha `0.02`, margin `0.01`.
+6. `c_k2_h145_a002_d16_margin01.yaml`: Group C, `k=2`, entropy `1.45`, draft `16`, alpha `0.02`, margin `0.01`.
+
+This script sets `RUN_SMOKE=0`, excludes Baseline / Group B by default, and
+writes to `outputs/${EXPORT_NAME}`.
+
 ## Latency-recovery sweep
 
 This sweep follows the k-sweep result. Group A continues from `a_fast_k2`, and

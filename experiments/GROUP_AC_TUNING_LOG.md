@@ -870,3 +870,55 @@ nohup bash scripts/run_group_ac_overnight_sweep.sh > server_run_overnight_margin
 4. 若 `switch_margin_rejections` 很低，说明 margin=0.02 太小；下一轮可以试 0.05。
 5. 若 `switch_margin_rejections` 很高但准确率下降，说明 margin 过保守，应回退到 0.01 或改成 dataset-specific margin。
 6. TruthfulQA 仍只作为 latency / generation-shape 参考，不纳入最终 accuracy 结论。
+
+## Planned Run 20260604: Daytime C-k2 Sweep
+
+### Goal
+
+白天只跑 6 组，保留最高信息量。Group A 继续围绕 `a_k2_h15_d20` 压延迟/补 StrategyQA；Group C 本轮全部设为 `k=2`，以更符合 Group C “小模型多路径探索 + 大模型验证选择” 的设计初衷。
+
+旧 `c_fast_k2` 的问题不是 `k=2` 本身，而是 `draft=32 + alpha=0.05 + no margin` 太重，导致 StrategyQA 掉到 0.76、MATH 只有 0.67、late drop/trigger 约 0.26、P90 偏高。本轮 C 采用轻量 k=2：
+
+```text
+k=2 + draft=16 + alpha=0.02 + small margin
+```
+
+### Configs To Run
+
+| Config | Group | k | entropy | draft | fallback | alpha | margin | Purpose |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+| `a_k2_h15_d16` | A | 2 | 1.5 | 16 | 32 | - | 0 | 继续压 A 延迟，观察 MATH 0.72 是否能保住 |
+| `a_k2_h15_d20_margin005` | A | 2 | 1.5 | 20 | 32 | - | 0.005 | A 的轻量 margin，避免 0.02 过强导致准确率下降 |
+| `a_k2_h155_d20` | A | 2 | 1.55 | 20 | 32 | - | 0 | 介于 h1.5/h1.6，目标补 StrategyQA 且少伤 MATH |
+| `c_k2_h14_a002_d16_margin005` | C | 2 | 1.4 | 16 | 32 | 0.02 | 0.005 | C k=2 最轻 margin，目标恢复 GSM8K 并保留多路径探索 |
+| `c_k2_h14_a002_d16_margin01` | C | 2 | 1.4 | 16 | 32 | 0.02 | 0.01 | C k=2 主测组，平衡 GSM8K/StrategyQA/MATH |
+| `c_k2_h145_a002_d16_margin01` | C | 2 | 1.45 | 16 | 32 | 0.02 | 0.01 | 略提高阈值减少触发，观察延迟和 MATH 是否更稳 |
+
+### Local Preparation
+
+已在本地准备：
+
+```text
+configs/group_ac/a_k2_h15_d16.yaml
+configs/group_ac/a_k2_h15_d20_margin005.yaml
+configs/group_ac/a_k2_h155_d20.yaml
+configs/group_ac/c_k2_h14_a002_d16_margin005.yaml
+configs/group_ac/c_k2_h14_a002_d16_margin01.yaml
+configs/group_ac/c_k2_h145_a002_d16_margin01.yaml
+scripts/run_group_ac_daytime_k2c_sweep.sh
+```
+
+服务器运行命令：
+
+```bash
+nohup bash scripts/run_group_ac_daytime_k2c_sweep.sh > server_run_daytime_k2c.log 2>&1 &
+```
+
+### Decision Rules
+
+1. A 组：优先看 `a_k2_h15_d16` 是否保持 MATH >= 0.70 且降低 macro avg；若掉分，保留 `a_k2_h15_d20` 主线。
+2. A 组：`margin005` 只要不明显掉 MATH/StrategyQA，就可继续往 margin `0.01` 扩。
+3. C 组：三组都必须检查 late drop/trigger，若 `k=2,d16` 仍 late drop 很高，说明 C 的多路径探索主要瓶颈在 draft 返回时间。
+4. C 组：优先保留同时满足 StrategyQA >= 0.79、MATH >= 0.70、GSM8K >= 0.77 的配置。
+5. 若 C k=2 的 accuracy 无收益但 latency 更差，报告里可以说明“符合初衷的多路径探索已验证，但当前小模型/窗口设置下不占优”。
+6. TruthfulQA 仍只作为 latency / generation-shape 参考。
