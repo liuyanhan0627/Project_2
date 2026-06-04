@@ -922,3 +922,49 @@ nohup bash scripts/run_group_ac_daytime_k2c_sweep.sh > server_run_daytime_k2c.lo
 4. C 组：优先保留同时满足 StrategyQA >= 0.79、MATH >= 0.70、GSM8K >= 0.77 的配置。
 5. 若 C k=2 的 accuracy 无收益但 latency 更差，报告里可以说明“符合初衷的多路径探索已验证，但当前小模型/窗口设置下不占优”。
 6. TruthfulQA 仍只作为 latency / generation-shape 参考。
+
+## Planned Run 20260604: K2 Refine Sweep
+
+### Goal
+
+继续固定 `k=2`。Group A 不再回到 k=1，而是在当前主线 `a_k2_h15_d20` 周围试更细的 entropy / draft / small temperature。Group C 也继续固定 `k=2`，围绕当前最好 k=2 点 `c_k2_h145_a002_d16_margin01` 微调，目标是把 StrategyQA 拉到 0.79+、MATH 拉到 0.70+，同时保留 k=2 多路径探索的论文一致性。
+
+### Configs To Run
+
+| Config | Group | k | entropy | draft | fallback | alpha | margin | small temp | Purpose |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---|
+| `a_k2_h145_d20` | A | 2 | 1.45 | 20 | 32 | - | 0 | 0.5 | 比 h1.5 更保守，目标减少触发/延迟并保住 MATH |
+| `a_k2_h15_d18` | A | 2 | 1.5 | 18 | 32 | - | 0 | 0.5 | 介于 d16/d20，找 A 的 draft 长度临界点 |
+| `a_k2_h15_d20_t04` | A | 2 | 1.5 | 20 | 32 | - | 0 | 0.4 | 降低小模型温度，目标减少 late drop 并稳定 draft |
+| `c_k2_h145_a002_d20_margin01` | C | 2 | 1.45 | 20 | 32 | 0.02 | 0.01 | 0.5 | 放宽 draft 到 20，目标把 MATH 从 0.68 拉到 0.70 |
+| `c_k2_h145_a002_d16_margin005` | C | 2 | 1.45 | 16 | 32 | 0.02 | 0.005 | 0.5 | 降低 margin，让 small path 多切换，目标补 StrategyQA/MATH |
+| `c_k2_h145_a003_d16_margin01` | C | 2 | 1.45 | 16 | 32 | 0.03 | 0.01 | 0.5 | 提高 alpha，验证 length weight 是否能更频繁参与选择 |
+
+### Local Preparation
+
+已在本地准备：
+
+```text
+configs/group_ac/a_k2_h145_d20.yaml
+configs/group_ac/a_k2_h15_d18.yaml
+configs/group_ac/a_k2_h15_d20_t04.yaml
+configs/group_ac/c_k2_h145_a002_d20_margin01.yaml
+configs/group_ac/c_k2_h145_a002_d16_margin005.yaml
+configs/group_ac/c_k2_h145_a003_d16_margin01.yaml
+scripts/run_group_ac_k2_refine_sweep.sh
+```
+
+服务器运行命令：
+
+```bash
+nohup bash scripts/run_group_ac_k2_refine_sweep.sh > server_run_k2_refine.log 2>&1 &
+```
+
+### Decision Rules
+
+1. A 组：若 `a_k2_h15_d18` 保持 MATH >= 0.70 且 macro avg 低于 `a_k2_h15_d20`，下一轮继续在 d18 附近细调。
+2. A 组：若 `small_temperature=0.4` 降低 late drop 且不掉准确率，则后续把 temp 作为 A 主线参数。
+3. C 组：`c_k2_h145_a002_d20_margin01` 若 MATH >= 0.70 且延迟不明显恶化，保留 d20。
+4. C 组：`alpha=0.03` 需要重点看 `length_weight_overrides`，若仍接近 1%，说明 length weight 本身不是当前瓶颈。
+5. 本轮所有 C 配置都固定 `k=2`；若仍无法超过 k=1 主线，需要在报告中明确 k=2 已按轻量化多路径方案验证。
+6. TruthfulQA 仍只作为 latency / generation-shape 参考。

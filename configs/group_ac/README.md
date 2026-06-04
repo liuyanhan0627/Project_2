@@ -59,6 +59,31 @@ Default configs:
 This script sets `RUN_SMOKE=0`, excludes Baseline / Group B by default, and
 writes to `outputs/${EXPORT_NAME}`.
 
+## K2 refine sweep
+
+This sweep keeps `k=2` for both Group A and Group C. Group A refines the current
+`a_k2_h15_d20` line with entropy, draft length, and small-model temperature.
+Group C continues from `c_k2_h145_a002_d16_margin01` and tests whether longer
+drafts, smaller margin, or stronger length weight can recover MATH/StrategyQA.
+
+Run command:
+
+```bash
+bash scripts/run_group_ac_k2_refine_sweep.sh
+```
+
+Default configs:
+
+1. `a_k2_h145_d20.yaml`: Group A, `k=2`, entropy `1.45`, draft `20`.
+2. `a_k2_h15_d18.yaml`: Group A, `k=2`, entropy `1.5`, draft `18`.
+3. `a_k2_h15_d20_t04.yaml`: Group A, `k=2`, entropy `1.5`, draft `20`, small temperature `0.4`.
+4. `c_k2_h145_a002_d20_margin01.yaml`: Group C, `k=2`, entropy `1.45`, draft `20`, alpha `0.02`, margin `0.01`.
+5. `c_k2_h145_a002_d16_margin005.yaml`: Group C, `k=2`, entropy `1.45`, draft `16`, alpha `0.02`, margin `0.005`.
+6. `c_k2_h145_a003_d16_margin01.yaml`: Group C, `k=2`, entropy `1.45`, draft `16`, alpha `0.03`, margin `0.01`.
+
+This script sets `RUN_SMOKE=0`, excludes Baseline / Group B by default, and
+writes to `outputs/${EXPORT_NAME}`.
+
 ## Latency-recovery sweep
 
 This sweep follows the k-sweep result. Group A continues from `a_fast_k2`, and
