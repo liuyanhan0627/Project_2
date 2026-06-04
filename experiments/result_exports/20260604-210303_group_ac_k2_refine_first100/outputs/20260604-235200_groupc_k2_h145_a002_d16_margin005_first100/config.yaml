@@ -1,0 +1,59 @@
+experiment:
+  name: groupc_k2_h145_a002_d16_margin005_first100
+  output_root: outputs/20260604-210303_group_ac_k2_refine_first100
+  src_dir: ASPS/experiments/SelfEval-Guided-Decoding/src
+  stop_on_failure: true
+runtime:
+  python: python3
+env:
+  HF_TOKEN: HF_TOKEN_REDACTED
+models:
+  big_model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  small_model: meta-llama/Llama-3.2-1B-Instruct
+  auth_token: HF_TOKEN_REDACTED
+  big_device: cuda:0
+  small_device: cuda:1
+metric:
+  name: accuracy
+  mode: max
+common_args:
+  batch_size: 1
+  seed: 0
+  max_tokens: 600
+  chatgpt: false
+  verbal: false
+  reverse: false
+datasets:
+- name: gsm8k
+  input_file: /root/autodl-tmp/Project_2/ASPS/experiments/SelfEval-Guided-Decoding/data/gsm8k_test.jsonl
+  start: 0
+  end: 99
+- name: strategyqa
+  input_file: /root/autodl-tmp/Project_2/ASPS/experiments/SelfEval-Guided-Decoding/data/strategyqa_test.jsonl
+  start: 0
+  end: 99
+- name: math
+  input_file: ASPS/experiments/SelfEval-Guided-Decoding/data/MATH/test.jsonl
+  start: 0
+  end: 99
+- name: truthfulqa
+  input_file: ASPS/experiments/SelfEval-Guided-Decoding/data/truthfulqa/TruthfulQA.csv
+  start: 0
+  end: 99
+groups:
+  group_c:
+    enabled: true
+    env:
+      CUDA_VISIBLE_DEVICES: 0,1
+    args:
+      entropy_threshold: 1.45
+      draft_candidates: 2
+      max_draft_tokens: 16
+      max_fallback_tokens: 32
+      length_weight_alpha: 0.02
+      length_weight_mode: longer
+      switch_score_margin: 0.005
+      big_temperature: 0.0
+      big_top_p: 1.0
+      small_temperature: 0.5
+      small_top_p: 0.9
