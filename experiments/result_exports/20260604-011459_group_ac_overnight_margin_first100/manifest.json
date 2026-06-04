@@ -1,0 +1,21 @@
+{
+  "byte_count": 19564176,
+  "created_at": "2026-06-04T08:13:47",
+  "excluded_dirs": [
+    "__pycache__"
+  ],
+  "excluded_suffixes": [
+    ".bin",
+    ".chk",
+    ".ckpt",
+    ".pkl",
+    ".pt",
+    ".pth",
+    ".safetensors"
+  ],
+  "export_dir": "experiments/result_exports/20260604-011459_group_ac_overnight_margin_first100",
+  "file_count": 191,
+  "outputs": "outputs/20260604-011459_group_ac_overnight_margin_first100",
+  "redacted_files": 80,
+  "registry": "experiments/registry.csv"
+}

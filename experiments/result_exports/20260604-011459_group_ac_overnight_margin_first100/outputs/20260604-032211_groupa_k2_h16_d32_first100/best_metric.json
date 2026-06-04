@@ -1,0 +1,13 @@
+{
+  "metric": "accuracy",
+  "mode": "max",
+  "row": {
+    "accuracy": 0.79,
+    "correct": 79,
+    "dataset": "strategyqa",
+    "group": "group_a",
+    "summary_file": "/root/autodl-tmp/Project_2/outputs/20260604-011459_group_ac_overnight_margin_first100/20260604-032211_groupa_k2_h16_d32_first100/results/strategyqa/group_a/strategyqa_groupA_bigLlama-3.1-8B-Instruct_smallLlama-3.2-1B-Instruct_s0_e100_06_04_03_28_seed0_entropy1.6_k2_draft32_fallback32_summary.txt",
+    "total": 100
+  },
+  "value": 0.79
+}

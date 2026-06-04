@@ -1,0 +1,52 @@
+{
+  "jobs": [
+    {
+      "command": "python3 generate_code_groupa_llama.py --batch_size 1 --seed 0 --max_tokens 600 --big_model_name meta-llama/Meta-Llama-3.1-8B-Instruct --small_model_name meta-llama/Llama-3.2-1B-Instruct --auth_token HF_TOKEN_REDACTED --big_device cuda:0 --small_device cuda:1 --dt_name gsm8k --input_file /root/autodl-tmp/Project_2/ASPS/experiments/SelfEval-Guided-Decoding/data/gsm8k_test.jsonl --start 0 --end 99 --output_dir /root/autodl-tmp/Project_2/outputs/20260604-011459_group_ac_overnight_margin_first100/20260604-011459_groupa_k2_h15_d24_first100/results/gsm8k/group_a --entropy_threshold 1.5 --draft_candidates 2 --max_draft_tokens 24 --max_fallback_tokens 32 --big_temperature 0.0 --big_top_p 1.0 --small_temperature 0.5 --small_top_p 0.9",
+      "dataset": "gsm8k",
+      "duration_sec": 378.7363965511322,
+      "finished_at": "2026-06-04T01:21:18",
+      "group": "group_a",
+      "log_file": "/root/autodl-tmp/Project_2/outputs/20260604-011459_group_ac_overnight_margin_first100/20260604-011459_groupa_k2_h15_d24_first100/logs/001_gsm8k_group_a.log",
+      "name": "001_gsm8k_group_a",
+      "result_dir": "/root/autodl-tmp/Project_2/outputs/20260604-011459_group_ac_overnight_margin_first100/20260604-011459_groupa_k2_h15_d24_first100/results/gsm8k/group_a",
+      "returncode": 0,
+      "started_at": "2026-06-04T01:14:59"
+    },
+    {
+      "command": "python3 generate_code_groupa_llama.py --batch_size 1 --seed 0 --max_tokens 600 --big_model_name meta-llama/Meta-Llama-3.1-8B-Instruct --small_model_name meta-llama/Llama-3.2-1B-Instruct --auth_token HF_TOKEN_REDACTED --big_device cuda:0 --small_device cuda:1 --dt_name strategyqa --input_file /root/autodl-tmp/Project_2/ASPS/experiments/SelfEval-Guided-Decoding/data/strategyqa_test.jsonl --start 0 --end 99 --output_dir /root/autodl-tmp/Project_2/outputs/20260604-011459_group_ac_overnight_margin_first100/20260604-011459_groupa_k2_h15_d24_first100/results/strategyqa/group_a --entropy_threshold 1.5 --draft_candidates 2 --max_draft_tokens 24 --max_fallback_tokens 32 --big_temperature 0.0 --big_top_p 1.0 --small_temperature 0.5 --small_top_p 0.9",
+      "dataset": "strategyqa",
+      "duration_sec": 211.10096716880798,
+      "finished_at": "2026-06-04T01:24:49",
+      "group": "group_a",
+      "log_file": "/root/autodl-tmp/Project_2/outputs/20260604-011459_group_ac_overnight_margin_first100/20260604-011459_groupa_k2_h15_d24_first100/logs/002_strategyqa_group_a.log",
+      "name": "002_strategyqa_group_a",
+      "result_dir": "/root/autodl-tmp/Project_2/outputs/20260604-011459_group_ac_overnight_margin_first100/20260604-011459_groupa_k2_h15_d24_first100/results/strategyqa/group_a",
+      "returncode": 0,
+      "started_at": "2026-06-04T01:21:18"
+    },
+    {
+      "command": "python3 generate_code_groupa_llama.py --batch_size 1 --seed 0 --max_tokens 600 --big_model_name meta-llama/Meta-Llama-3.1-8B-Instruct --small_model_name meta-llama/Llama-3.2-1B-Instruct --auth_token HF_TOKEN_REDACTED --big_device cuda:0 --small_device cuda:1 --dt_name math --input_file /root/autodl-tmp/Project_2/ASPS/experiments/SelfEval-Guided-Decoding/data/MATH/test.jsonl --start 0 --end 99 --output_dir /root/autodl-tmp/Project_2/outputs/20260604-011459_group_ac_overnight_margin_first100/20260604-011459_groupa_k2_h15_d24_first100/results/math/group_a --entropy_threshold 1.5 --draft_candidates 2 --max_draft_tokens 24 --max_fallback_tokens 32 --big_temperature 0.0 --big_top_p 1.0 --small_temperature 0.5 --small_top_p 0.9",
+      "dataset": "math",
+      "duration_sec": 442.7981355190277,
+      "finished_at": "2026-06-04T01:32:12",
+      "group": "group_a",
+      "log_file": "/root/autodl-tmp/Project_2/outputs/20260604-011459_group_ac_overnight_margin_first100/20260604-011459_groupa_k2_h15_d24_first100/logs/003_math_group_a.log",
+      "name": "003_math_group_a",
+      "result_dir": "/root/autodl-tmp/Project_2/outputs/20260604-011459_group_ac_overnight_margin_first100/20260604-011459_groupa_k2_h15_d24_first100/results/math/group_a",
+      "returncode": 0,
+      "started_at": "2026-06-04T01:24:49"
+    },
+    {
+      "command": "python3 generate_code_groupa_llama.py --batch_size 1 --seed 0 --max_tokens 600 --big_model_name meta-llama/Meta-Llama-3.1-8B-Instruct --small_model_name meta-llama/Llama-3.2-1B-Instruct --auth_token HF_TOKEN_REDACTED --big_device cuda:0 --small_device cuda:1 --dt_name truthfulqa --input_file /root/autodl-tmp/Project_2/ASPS/experiments/SelfEval-Guided-Decoding/data/truthfulqa/TruthfulQA.csv --start 0 --end 99 --output_dir /root/autodl-tmp/Project_2/outputs/20260604-011459_group_ac_overnight_margin_first100/20260604-011459_groupa_k2_h15_d24_first100/results/truthfulqa/group_a --entropy_threshold 1.5 --draft_candidates 2 --max_draft_tokens 24 --max_fallback_tokens 32 --big_temperature 0.0 --big_top_p 1.0 --small_temperature 0.5 --small_top_p 0.9",
+      "dataset": "truthfulqa",
+      "duration_sec": 1553.7348532676697,
+      "finished_at": "2026-06-04T01:58:05",
+      "group": "group_a",
+      "log_file": "/root/autodl-tmp/Project_2/outputs/20260604-011459_group_ac_overnight_margin_first100/20260604-011459_groupa_k2_h15_d24_first100/logs/004_truthfulqa_group_a.log",
+      "name": "004_truthfulqa_group_a",
+      "result_dir": "/root/autodl-tmp/Project_2/outputs/20260604-011459_group_ac_overnight_margin_first100/20260604-011459_groupa_k2_h15_d24_first100/results/truthfulqa/group_a",
+      "returncode": 0,
+      "started_at": "2026-06-04T01:32:12"
+    }
+  ]
+}
