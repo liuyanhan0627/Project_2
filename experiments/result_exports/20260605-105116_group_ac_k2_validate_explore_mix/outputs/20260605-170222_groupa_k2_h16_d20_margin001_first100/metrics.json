@@ -1,0 +1,36 @@
+{
+  "metrics": [
+    {
+      "accuracy": 0.77,
+      "correct": 77,
+      "dataset": "gsm8k",
+      "group": "group_a",
+      "summary_file": "/root/autodl-tmp/Project_2/outputs/20260605-105116_group_ac_k2_validate_explore_mix/20260605-170222_groupa_k2_h16_d20_margin001_first100/results/gsm8k/group_a/gsm8k_groupA_bigLlama-3.1-8B-Instruct_smallLlama-3.2-1B-Instruct_s0_e100_06_05_17_02_seed0_entropy1.6_k2_draft20_fallback32_margin0p001_summary.txt",
+      "total": 100
+    },
+    {
+      "accuracy": 0.71,
+      "correct": 71,
+      "dataset": "math",
+      "group": "group_a",
+      "summary_file": "/root/autodl-tmp/Project_2/outputs/20260605-105116_group_ac_k2_validate_explore_mix/20260605-170222_groupa_k2_h16_d20_margin001_first100/results/math/group_a/math_groupA_bigLlama-3.1-8B-Instruct_smallLlama-3.2-1B-Instruct_s0_e100_06_05_17_11_seed0_entropy1.6_k2_draft20_fallback32_margin0p001_summary.txt",
+      "total": 100
+    },
+    {
+      "accuracy": 0.8,
+      "correct": 80,
+      "dataset": "strategyqa",
+      "group": "group_a",
+      "summary_file": "/root/autodl-tmp/Project_2/outputs/20260605-105116_group_ac_k2_validate_explore_mix/20260605-170222_groupa_k2_h16_d20_margin001_first100/results/strategyqa/group_a/strategyqa_groupA_bigLlama-3.1-8B-Instruct_smallLlama-3.2-1B-Instruct_s0_e100_06_05_17_08_seed0_entropy1.6_k2_draft20_fallback32_margin0p001_summary.txt",
+      "total": 100
+    },
+    {
+      "accuracy": null,
+      "correct": null,
+      "dataset": "truthfulqa",
+      "group": "group_a",
+      "summary_file": "/root/autodl-tmp/Project_2/outputs/20260605-105116_group_ac_k2_validate_explore_mix/20260605-170222_groupa_k2_h16_d20_margin001_first100/results/truthfulqa/group_a/truthfulqa_groupA_bigLlama-3.1-8B-Instruct_smallLlama-3.2-1B-Instruct_s0_e100_06_05_17_18_seed0_entropy1.6_k2_draft20_fallback32_margin0p001_summary.txt",
+      "total": null
+    }
+  ]
+}

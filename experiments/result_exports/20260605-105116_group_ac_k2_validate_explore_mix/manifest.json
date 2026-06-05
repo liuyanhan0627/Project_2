@@ -1,0 +1,21 @@
+{
+  "byte_count": 22072592,
+  "created_at": "2026-06-05T17:42:45",
+  "excluded_dirs": [
+    "__pycache__"
+  ],
+  "excluded_suffixes": [
+    ".bin",
+    ".chk",
+    ".ckpt",
+    ".pkl",
+    ".pt",
+    ".pth",
+    ".safetensors"
+  ],
+  "export_dir": "experiments/result_exports/20260605-105116_group_ac_k2_validate_explore_mix",
+  "file_count": 191,
+  "outputs": "outputs/20260605-105116_group_ac_k2_validate_explore_mix",
+  "redacted_files": 80,
+  "registry": "experiments/registry.csv"
+}
