@@ -63,6 +63,34 @@ Default configs:
 
 This script sets `RUN_SMOKE=0` and excludes Baseline / Group B by default.
 
+## K2 validation and explore sweep
+
+This mixed sweep uses ten configs. Three configs validate the best current
+finalists on `start=100, end=199`; seven configs continue first-100 exploration
+around the strongest Group A and Group C lines. Treat the second-100 configs as
+stability checks, not direct rows in the first-100 leaderboard.
+
+Run command:
+
+```bash
+bash scripts/run_group_ac_k2_validate_explore_sweep.sh
+```
+
+Default configs:
+
+1. `c_k2_h145_a003_d16_margin005_second100.yaml`: Group C, second100, `k=2`, entropy `1.45`, draft `16`, alpha `0.03`, margin `0.005`.
+2. `a_k2_h16_d20_second100.yaml`: Group A, second100, `k=2`, entropy `1.6`, draft `20`.
+3. `a_k2_h155_d20_margin002_second100.yaml`: Group A, second100, `k=2`, entropy `1.55`, draft `20`, margin `0.002`.
+4. `c_k2_h145_a003_d16_margin002.yaml`: Group C, first100, `k=2`, entropy `1.45`, draft `16`, alpha `0.03`, margin `0.002`.
+5. `c_k2_h145_a003_d16_margin0075.yaml`: Group C, first100, `k=2`, entropy `1.45`, draft `16`, alpha `0.03`, margin `0.0075`.
+6. `c_k2_h1425_a003_d16_margin005.yaml`: Group C, first100, `k=2`, entropy `1.425`, draft `16`, alpha `0.03`, margin `0.005`.
+7. `c_k2_h1475_a003_d16_margin005.yaml`: Group C, first100, `k=2`, entropy `1.475`, draft `16`, alpha `0.03`, margin `0.005`.
+8. `c_k2_h145_a0035_d16_margin005.yaml`: Group C, first100, `k=2`, entropy `1.45`, draft `16`, alpha `0.035`, margin `0.005`.
+9. `a_k2_h16_d18.yaml`: Group A, first100, `k=2`, entropy `1.6`, draft `18`.
+10. `a_k2_h16_d20_margin001.yaml`: Group A, first100, `k=2`, entropy `1.6`, draft `20`, margin `0.001`.
+
+This script sets `RUN_SMOKE=0` and excludes Baseline / Group B by default.
+
 ## Daytime C-k2 sweep
 
 This sweep keeps Group A on the best low-latency k=2 line, and sets every

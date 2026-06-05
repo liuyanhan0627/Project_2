@@ -1077,3 +1077,135 @@ nohup bash scripts/run_group_ac_k2_overnight_mix_sweep.sh > server_run_k2_overni
 4. A 组若 `a_k2_h15_d20_f24` 准确率不崩，则继续沿 fallback 24 压延迟。
 5. 若 C d14 accuracy 明显下降，则不再继续压 draft；说明 C k=2 的 draft 下限约在 16。
 6. TruthfulQA 仍只作为 latency / generation-shape 参考，不纳入最终 accuracy 结论。
+
+## Result 20260605: K2 Overnight Mix Sweep
+
+### Export
+
+```text
+experiments/result_exports/20260605-020438_group_ac_k2_overnight_mix_first100
+```
+
+完整性检查：
+
+- `registry.csv`: 40 rows
+- `metrics.json`: 10 files
+- `jsonl`: 40 files
+- `summary.txt`: 40 files
+
+### Main Result
+
+| Config | GSM8K | StrategyQA | MATH | Macro Acc | Macro Avg | Macro P90 |
+|---|---:|---:|---:|---:|---:|---:|
+| Baseline | 0.77 | 0.79 | 0.67 | 0.743 | 2.80s | n/a |
+| GroupB | 0.80 | 0.73 | 0.67 | 0.733 | 9.48s | 11.57s |
+| `groupa_k2_h153_d20` | 0.78 | 0.77 | 0.70 | 0.750 | 3.03s | 4.14s |
+| `groupa_k2_h155_d18` | 0.78 | 0.77 | 0.72 | 0.757 | 3.18s | 4.65s |
+| `groupa_k2_h155_d20_margin002` | 0.77 | 0.78 | 0.70 | 0.750 | 3.01s | 4.19s |
+| `groupa_k2_h15_d20_f24` | 0.78 | 0.76 | 0.65 | 0.730 | 3.15s | 5.06s |
+| `groupa_k2_h16_d20` | 0.78 | 0.78 | 0.71 | 0.757 | 3.16s | 4.60s |
+| `groupc_k2_h145_a003_d14_margin01` | 0.77 | 0.78 | 0.70 | 0.750 | 3.14s | 4.87s |
+| `groupc_k2_h145_a003_d16_margin005` | 0.78 | 0.79 | 0.71 | 0.760 | 2.99s | 4.19s |
+| `groupc_k2_h145_a003_d18_margin01` | 0.78 | 0.79 | 0.68 | 0.750 | 3.05s | 4.37s |
+| `groupc_k2_h145_a004_d16_margin01` | 0.77 | 0.79 | 0.68 | 0.747 | 3.06s | 4.19s |
+| `groupc_k2_h15_a003_d16_margin01` | 0.78 | 0.79 | 0.68 | 0.750 | 3.05s | 4.43s |
+
+### Interpretation
+
+- 本轮最强配置是 `groupc_k2_h145_a003_d16_margin005`，也是目前整体最强候选。
+- 它比 GroupB 明显更好：Macro Acc 0.760 > 0.733，Macro Avg 2.99s << 9.48s。
+- 它比 baseline 准确率更高：Macro Acc 0.760 > 0.743；但延迟仍略慢：2.99s > 2.80s。
+- `c_k2_h145_a003_d16_margin005` 相比上一轮 C k=2 主线 `c_k2_h145_a003_d16_margin01`，MATH 从 0.69 提到 0.71，Macro P90 从 4.39s 降到 4.19s。
+- A 组也有进展：`a_k2_h16_d20` 和 `a_k2_h155_d18` 都达到 Macro Acc 0.757；其中 `a_k2_h16_d20` 更均衡，StrategyQA 0.78，MATH 0.71。
+- A 的 `a_k2_h155_d20_margin002` 是低延迟备选，Macro Avg 3.01s，但 MATH 只有 0.70。
+
+### Mechanism Notes
+
+| Config | Late Drop / Trigger | Switch / Trigger | Margin / Trigger | Length / Verify |
+|---|---:|---:|---:|---:|
+| `groupa_k2_h153_d20` | 0.207 | 0.220 | 0.000 | 0.000 |
+| `groupa_k2_h155_d18` | 0.218 | 0.214 | 0.000 | 0.000 |
+| `groupa_k2_h155_d20_margin002` | 0.223 | 0.077 | 0.135 | 0.000 |
+| `groupa_k2_h15_d20_f24` | 0.203 | 0.216 | 0.000 | 0.000 |
+| `groupa_k2_h16_d20` | 0.228 | 0.194 | 0.000 | 0.000 |
+| `groupc_k2_h145_a003_d14_margin01` | 0.175 | 0.066 | 0.123 | 0.018 |
+| `groupc_k2_h145_a003_d16_margin005` | 0.198 | 0.069 | 0.120 | 0.012 |
+| `groupc_k2_h145_a003_d18_margin01` | 0.183 | 0.058 | 0.139 | 0.008 |
+| `groupc_k2_h145_a004_d16_margin01` | 0.189 | 0.066 | 0.125 | 0.018 |
+| `groupc_k2_h15_a003_d16_margin01` | 0.187 | 0.072 | 0.114 | 0.021 |
+
+TruthfulQA 仍有 95-98/100 个样本出现 follow-up Q/A 形态，继续不纳入自动 accuracy 结论。
+
+### Decision
+
+Keep:
+
+- Group C 主线改为 `c_k2_h145_a003_d16_margin005`。
+- Group A 主线改为 `a_k2_h16_d20`。
+- Group A 低延迟备选保留 `a_k2_h155_d20_margin002`。
+
+Drop:
+
+- `a_k2_h15_d20_f24`：fallback 24 导致 MATH 掉到 0.65。
+- `c_k2_h145_a004_d16_margin01`：alpha 0.04 没有收益。
+- `c_k2_h145_a003_d18_margin01`：draft 18 没把 MATH 拉起来。
+- `c_k2_h145_a003_d14_margin01`：MATH 到 0.70，但延迟/P90 变差，draft 14 不划算。
+
+## Planned Run 20260605: Second100 Validation + First100 Explore
+
+### Goal
+
+本轮给 10 个参数空间：
+
+1. 3 个配置跑 `start=100, end=199`，验证当前最好的三个参数在 second100 上是否稳定。
+2. 7 个配置继续跑 first100，在当前最好边界附近探索更强参数。
+
+注意：second100 验证结果不能和 first100 探索结果直接混比；second100 主要看 finalist 泛化是否崩。
+
+### Configs To Run
+
+| Config | Group | Range | k | entropy | draft | fallback | alpha | margin | Type | Purpose |
+|---|---|---|---:|---:|---:|---:|---:|---:|---|---|
+| `c_k2_h145_a003_d16_margin005_second100` | C | 100-199 | 2 | 1.45 | 16 | 32 | 0.03 | 0.005 | validate | 验证当前最强 C k=2 是否在新 100 题上稳定 |
+| `a_k2_h16_d20_second100` | A | 100-199 | 2 | 1.60 | 20 | 32 | - | 0 | validate | 验证当前最均衡 A 是否稳定 |
+| `a_k2_h155_d20_margin002_second100` | A | 100-199 | 2 | 1.55 | 20 | 32 | - | 0.002 | validate | 验证 A 低延迟备选是否稳定 |
+| `c_k2_h145_a003_d16_margin002` | C | 0-99 | 2 | 1.45 | 16 | 32 | 0.03 | 0.002 | explore | 继续降低 margin，让小模型多探索，测试是否还能补 MATH |
+| `c_k2_h145_a003_d16_margin0075` | C | 0-99 | 2 | 1.45 | 16 | 32 | 0.03 | 0.0075 | explore | 在 0.005/0.01 中间找稳定点 |
+| `c_k2_h1425_a003_d16_margin005` | C | 0-99 | 2 | 1.425 | 16 | 32 | 0.03 | 0.005 | explore | 略降低阈值，增加触发，测试准确率上限 |
+| `c_k2_h1475_a003_d16_margin005` | C | 0-99 | 2 | 1.475 | 16 | 32 | 0.03 | 0.005 | explore | 略提高阈值，减少触发，测试能否压延迟 |
+| `c_k2_h145_a0035_d16_margin005` | C | 0-99 | 2 | 1.45 | 16 | 32 | 0.035 | 0.005 | explore | 在 alpha 0.03/0.04 中间找更优选择质量 |
+| `a_k2_h16_d18` | A | 0-99 | 2 | 1.60 | 18 | 32 | - | 0 | explore | 在 A h16 主线上缩短 draft，争取压延迟并保 MATH |
+| `a_k2_h16_d20_margin001` | A | 0-99 | 2 | 1.60 | 20 | 32 | - | 0.001 | explore | 给 A h16 主线加极轻 margin，测试能否保准确率并减少无效 switch |
+
+### Local Preparation
+
+需要在本地准备：
+
+```text
+configs/group_ac/c_k2_h145_a003_d16_margin005_second100.yaml
+configs/group_ac/a_k2_h16_d20_second100.yaml
+configs/group_ac/a_k2_h155_d20_margin002_second100.yaml
+configs/group_ac/c_k2_h145_a003_d16_margin002.yaml
+configs/group_ac/c_k2_h145_a003_d16_margin0075.yaml
+configs/group_ac/c_k2_h1425_a003_d16_margin005.yaml
+configs/group_ac/c_k2_h1475_a003_d16_margin005.yaml
+configs/group_ac/c_k2_h145_a0035_d16_margin005.yaml
+configs/group_ac/a_k2_h16_d18.yaml
+configs/group_ac/a_k2_h16_d20_margin001.yaml
+scripts/run_group_ac_k2_validate_explore_sweep.sh
+```
+
+服务器运行命令：
+
+```bash
+nohup bash scripts/run_group_ac_k2_validate_explore_sweep.sh > server_run_k2_validate_explore.log 2>&1 &
+```
+
+### Decision Rules
+
+1. second100 上若 `c_k2_h145_a003_d16_margin005_second100` 仍保持 C 组优势，下一步将它作为 finalist。
+2. second100 上若 A 两个候选都掉分，A 组回看 first100 排名，不急着定 finalist。
+3. first100 探索中若 C `margin002` 提升准确率但延迟变差，下一轮考虑 dataset-specific margin。
+4. first100 探索中若 C `h1475` 保持 0.76 macro 且更快，优先用它压 baseline latency。
+5. first100 探索中若 A `h16_d18` 保住 MATH >= 0.70 且 Macro Avg 下降，下一轮继续缩 draft / 加轻 margin。
+6. TruthfulQA 仍只作为 latency / generation-shape 参考，不纳入最终 accuracy 结论。
