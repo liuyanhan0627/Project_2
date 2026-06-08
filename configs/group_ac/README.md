@@ -12,6 +12,76 @@ Run order:
 
 All configs use the same four text datasets and `start=0, end=99` for a first-100 run.
 
+## Group D CNTP control
+
+Group D is the Cautious Next Token Prediction (CNTP) control from the paper
+code kept under `ASPS/`. It uses the patched `transformers` generation path
+with `cntp_perplexity=True`, while keeping the current project data loading,
+scoring, and result export format.
+
+Run command:
+
+```bash
+bash scripts/run_group_d_cautious_first100.sh
+```
+
+Default config:
+
+1. `d_cautious_first100.yaml`: Group D, CNTP perplexity mode,
+   `entropy_threshold_low=0.01`, `entropy_threshold_high=1.5`,
+   `max_trials=10`.
+
+Before running on the server, make sure the ASPS custom transformers package is
+installed in the active environment:
+
+```bash
+cd ASPS/custom_transformers_packages/gsm8k_strategyqa
+pip install -e .
+```
+
+This script sets `RUN_SMOKE=0`, runs only Group D, and writes to
+`outputs/${EXPORT_NAME}`.
+
+## RULER small overnight sweep
+
+This sweep adds a small RULER/NIAH retrieval dataset to the current comparison
+surface. Each config still runs the first100 slices of GSM8K, StrategyQA, MATH,
+and TruthfulQA, plus `ruler_niah` with `start=0, end=19` and `max_tokens=64`.
+The default queue mixes controls, previous finalists, Group D/CNTP, and a few
+new A/C exploration points.
+
+Run command:
+
+```bash
+bash scripts/run_group_ac_ruler_small_overnight.sh
+```
+
+The script generates the default deterministic RULER/NIAH file first:
+
+```text
+ASPS/experiments/SelfEval-Guided-Decoding/data/ruler/ruler_niah_words_2k_small.jsonl
+```
+
+Override it with `RULER_NIAH_FILE=/path/to/validation.jsonl` if using an
+officially generated RULER file with `input` and `outputs` fields.
+
+Default configs:
+
+1. `ruler_baseline_groupb.yaml`: Baseline and Group B controls on the same five datasets.
+2. `a_ruler_k2_h16_d20_margin001.yaml`: Group A previous finalist with tiny margin.
+3. `a_ruler_k2_h16_d20.yaml`: Group A previous finalist without margin.
+4. `a_ruler_k2_h155_d20_margin002.yaml`: Group A low-latency finalist.
+5. `c_ruler_k2_h145_a003_d16_margin005.yaml`: Group C previous finalist.
+6. `d_ruler_cautious_first100.yaml`: Group D / CNTP paper-method control.
+7. `a_ruler_k2_h165_d18_margin001.yaml`: Group A higher-threshold, shorter-draft exploration.
+8. `a_ruler_k2_h16_d16_margin001.yaml`: Group A shorter-draft latency exploration.
+9. `c_ruler_k2_h1475_a0025_d16_margin005.yaml`: Group C higher threshold with weaker length weight.
+10. `c_ruler_k2_h145_a0025_d14_margin005.yaml`: Group C shorter draft with weaker length weight.
+
+This script sets `RUN_SMOKE=0` and writes to `outputs/${EXPORT_NAME}`. The
+default queue has 10 config files and 55 jobs because `ruler_baseline_groupb`
+runs both Baseline and Group B.
+
 ## Candidate-count sweep
 
 The k sweep keeps the best current Group A and Group C bases fixed, and only changes

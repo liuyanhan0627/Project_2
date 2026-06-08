@@ -1,5 +1,7 @@
 import os
 import argparse
+import inspect
+import time
 from datetime import datetime
 
 import torch
@@ -21,7 +23,7 @@ def parse_args():
     parser.add_argument("--n_samples", default=1, type=int)
     parser.add_argument("--logprobs", default=1, type=int)
     parser.add_argument("--use_mini_n", default=False, action='store_true')
-    parser.add_argument("--mini_n_samples", default=4, type=int, help='value of n for mini code generation sampling (when token rate is limited)')
+    parser.add_argument("--mini_n_samples", default=1, type=int, help='value of n for mini code generation sampling (when token rate is limited)')
     parser.add_argument("--sleep_time", default=3, type=int)
     parser.add_argument("--max_stuck_time", default=8, type=int)
     ##=== prompt settings ===##
@@ -47,9 +49,18 @@ def parse_args():
     parser.add_argument("--resume", default=False, action='store_true')
     parser.add_argument("--resume_dt_string", default="", type=str)
     parser.add_argument("--seed", default=0, type=int)
-    parser.add_argument("--entropy_threshold_low", default=0.1, type=float)
-    parser.add_argument("--entropy_threshold_high", default=1.0, type=float)
+    parser.add_argument("--entropy_threshold_low", default=0.01, type=float)
+    parser.add_argument("--entropy_threshold_high", default=1.5, type=float)
+    parser.add_argument("--max_trials", default=10, type=int)
+    parser.add_argument(
+        "--cntp_mode",
+        default="perplexity",
+        choices=["perplexity", "same_num_trials", "negatively_correlated"],
+        help="CNTP decoding variant from Cautious Next Token Prediction.",
+    )
     args = parser.parse_args()
+    if args.n_samples < args.mini_n_samples or args.n_samples % args.mini_n_samples != 0:
+        raise ValueError("--n_samples must be a positive multiple of --mini_n_samples.")
     
     args.prompts = get_prompts(args.dt_name, return_eval=False, use_chatgpt=args.chatgpt)
     
@@ -122,16 +133,44 @@ def prompt_the_result(model, tokenizer, prompts, attn_masks, generation_config, 
     return {'choices': results}
 
 
-def assert_standard_decoding(generation_config):
-    cntp_flags = ("cntp_perplexity", "cntp_same_num_trials", "cntp_negatively_correlated")
-    enabled = [flag for flag in cntp_flags if getattr(generation_config, flag, False)]
-    if enabled:
-        raise RuntimeError(f"Baseline must use standard decoding; enabled CNTP flags: {enabled}")
+def cntp_generation_flags(mode):
+    if mode == "perplexity":
+        return {"cntp_perplexity": True}
+    if mode == "same_num_trials":
+        return {"cntp_same_num_trials": True}
+    if mode == "negatively_correlated":
+        return {"cntp_negatively_correlated": True}
+    raise ValueError(f"Unknown CNTP mode: {mode}")
+
+
+def assert_cntp_transformers_available():
+    from transformers.generation.utils import GenerationMixin
+
+    try:
+        generate_source = inspect.getsource(GenerationMixin.generate)
+    except (OSError, TypeError) as exc:
+        raise RuntimeError(
+            "Group D requires the ASPS custom transformers package with CNTP generation support."
+        ) from exc
+
+    required_methods = (
+        "_sample_reflect_perplexity",
+        "_sample_reflect_perplexity_same_num_trials",
+        "_sample_reflect_perplexity_negatively_correlated",
+    )
+    has_dispatch = "cntp_perplexity" in generate_source and "GenerationMode.CNTP_SAME_NUM_TRIALS" in generate_source
+    has_methods = all(hasattr(GenerationMixin, method) for method in required_methods)
+    if not has_dispatch or not has_methods:
+        raise RuntimeError(
+            "Group D requires ASPS patched transformers. Reinstall it on the server with: "
+            "cd ASPS/custom_transformers_packages/gsm8k_strategyqa && pip install -e ."
+        )
 
 
 if __name__ == "__main__":
 
     args = parse_args()
+    assert_cntp_transformers_available()
     set_seed(args.seed)
     
     ### ==================== Load Input Data ==================== ###
@@ -163,13 +202,13 @@ if __name__ == "__main__":
         raise ValueError("The specified model does not exist.")
     
     if args.greedy:
-        filename = f'{args.output_dir}/{args.dt_name}_{mtype}_s{args.start}_e{args.end}_{dt_string}_seed{args.seed}_entropy_low{args.entropy_threshold_low}_entropy_high{args.entropy_threshold_high}.jsonl'
+        filename = f'{args.output_dir}/{args.dt_name}_groupD_{mtype}_s{args.start}_e{args.end}_{dt_string}_seed{args.seed}_cntp_{args.cntp_mode}_entropy_low{args.entropy_threshold_low}_entropy_high{args.entropy_threshold_high}_trials{args.max_trials}.jsonl'
         assert not args.temperature, "In greedy decoding, temperature should be 0.0"
     else:
         if args.n_samples > 1:
-            filename = f'{args.output_dir}/{args.dt_name}_sc_{mtype}_tp{args.temperature}_topp{args.top_p}_s{args.start}_e{args.end}_{dt_string}_seed{args.seed}_entropy_low{args.entropy_threshold_low}_entropy_high{args.entropy_threshold_high}.jsonl'
+            filename = f'{args.output_dir}/{args.dt_name}_groupD_sc_{mtype}_tp{args.temperature}_topp{args.top_p}_s{args.start}_e{args.end}_{dt_string}_seed{args.seed}_cntp_{args.cntp_mode}_entropy_low{args.entropy_threshold_low}_entropy_high{args.entropy_threshold_high}_trials{args.max_trials}.jsonl'
         else:
-            filename = f'{args.output_dir}/{args.dt_name}_vanilla_{mtype}_tp{args.temperature}_topp{args.top_p}_s{args.start}_e{args.end}_{dt_string}_seed{args.seed}_entropy_low{args.entropy_threshold_low}_entropy_high{args.entropy_threshold_high}.jsonl'
+            filename = f'{args.output_dir}/{args.dt_name}_groupD_vanilla_{mtype}_tp{args.temperature}_topp{args.top_p}_s{args.start}_e{args.end}_{dt_string}_seed{args.seed}_cntp_{args.cntp_mode}_entropy_low{args.entropy_threshold_low}_entropy_high{args.entropy_threshold_high}_trials{args.max_trials}.jsonl'
     if args.reverse:
         filename = filename.replace('.jsonl', '') + '_reverse.jsonl'
     
@@ -203,8 +242,9 @@ if __name__ == "__main__":
         stop_strings = '\n\n\n',
         entropy_threshold_low=args.entropy_threshold_low,
         entropy_threshold_high=args.entropy_threshold_high,
+        max_trials=args.max_trials,
+        **cntp_generation_flags(args.cntp_mode),
     )
-    assert_standard_decoding(generation_config)
     
     if args.reverse:
         inputs = inputs[::-1]
@@ -223,7 +263,16 @@ if __name__ == "__main__":
             print('======================')
             print(f'Index: {exp["index"]}\nQuestion: {exp["question"]}')
         
+        sample_started = time.time()
         raw_results = prompt_the_result(model, tokenizer, prompts, attn_masks, generation_config, args.n_samples)
+        sample_wall_time = time.time() - sample_started
+        groupd_metrics = {
+            "wall_time": sample_wall_time / max(len(batch), 1),
+            "cntp_mode": args.cntp_mode,
+            "entropy_threshold_low": args.entropy_threshold_low,
+            "entropy_threshold_high": args.entropy_threshold_high,
+            "max_trials": args.max_trials,
+        }
         # print(f"raw_results: {raw_results}")
         results = parse_api_result(raw_results, llama=True, return_prob=False)
         # print(f"results: {results}")
@@ -251,6 +300,7 @@ if __name__ == "__main__":
             exp = batch[0]
             exp.update({
                 'executed': prediction, 'generated': results, 'is_correct': score,
+                'groupd_metrics': groupd_metrics,
             })
             with jsonlines.open(filename, mode='a') as writer:
                 writer.write(exp)
@@ -266,6 +316,7 @@ if __name__ == "__main__":
                     wrong += 1
                 exp.update({
                     'executed': prediction, 'generated': [rst], 'is_correct': score,
+                    'groupd_metrics': groupd_metrics,
                 })
                 with jsonlines.open(filename, mode='a') as writer:
                     writer.write(exp)

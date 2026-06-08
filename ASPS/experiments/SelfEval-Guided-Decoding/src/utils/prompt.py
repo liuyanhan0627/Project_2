@@ -16,7 +16,9 @@ def import_name(modulename, name):
 
 
 def _get_reasoning_type(dt_name):
-    if dt_name in ['math']:
+    if dt_name in ['ruler_niah']:
+        reasoning_type = 'retrieval'
+    elif dt_name in ['math']:
         reasoning_type = 'math'
     elif dt_name in ['truthfulqa']:
         reasoning_type = 'open_qa'
@@ -35,7 +37,10 @@ def _get_request(raw, dt_name):
     reasoning_type = _get_reasoning_type(dt_name)
     instruction, in_context = '', ''
     
-    if dt_name in ['math']:
+    if dt_name in ['ruler_niah']:
+        instruction = ''
+        in_context = raw.strip()
+    elif dt_name in ['math']:
         instruction = 'Solve the following math problem by reasoning step by step. Put the final answer within \\boxed{}:\n'
         in_context = raw.strip()
     elif dt_name in ['truthfulqa']:
@@ -100,6 +105,9 @@ def _split_ans(ans_prompt, reasoning_type, dt_name):
 
 def get_prompts(dt_name, return_eval=True, use_chatgpt=False):
     reasoning_type = _get_reasoning_type(dt_name)
+    if dt_name in ['ruler_niah']:
+        return {'ans': '', 'type': reasoning_type, 'eval': None, 'choice_prefix': None}
+
     if reasoning_type == 'arithmetic':
         path = ['prompts', dt_name]
     elif reasoning_type in ['math', 'open_qa']:
@@ -193,6 +201,13 @@ def get_prompt_inputs(dt_name, prompts, example, use_chatgpt=False):
             prompt += f'\n\nQ: {qu}\nA:'
         if return_eval:
             prefix += f'\n\nQ: {qu}\nA:'
+    elif dt_name in ['ruler_niah']:
+        if use_chatgpt:
+            prompt = [{"role": "user", "content": qu.strip()}]
+        else:
+            prompt = qu.strip()
+            if not regex.search(r'(?:^|\n)\s*Answer\s*:?\s*$', prompt[-120:], flags=regex.I):
+                prompt += '\nAnswer:'
     elif dt_name in ['saycan']:
         prompt += f'Human: {qu}\n\n'
         if return_eval:

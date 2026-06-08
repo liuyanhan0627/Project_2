@@ -254,6 +254,42 @@ def is_unscored_dataset(dt_name):
     return dt_name in {'truthfulqa'}
 
 
+def _normalize_ruler_text(value):
+    text = _as_generation_text(value).lower()
+    text = text.replace('\u201c', '"').replace('\u201d', '"').replace('\u2019', "'")
+    text = regex.sub(r'\s+', ' ', text).strip()
+    return text.strip(string.whitespace + string.punctuation + '"\'')
+
+
+def _ruler_reference_list(reference):
+    if reference is None:
+        return []
+    if isinstance(reference, list):
+        return [str(item) for item in reference if item is not None]
+    if isinstance(reference, tuple):
+        return [str(item) for item in reference if item is not None]
+    return [str(reference)]
+
+
+def ruler_string_match(prediction, reference):
+    pred = _normalize_ruler_text(prediction)
+    pred_compact = regex.sub(r'\W+', '', pred)
+    refs = _ruler_reference_list(reference)
+    if not pred or not refs:
+        return False
+    for ref in refs:
+        target = _normalize_ruler_text(ref)
+        target_compact = regex.sub(r'\W+', '', target)
+        if not target:
+            return False
+        if target in pred:
+            continue
+        if target_compact and target_compact in pred_compact:
+            continue
+        return False
+    return True
+
+
 def _coerce_numeric_string(value):
     if isinstance(value, str):
         cleaned = value.strip().replace(',', '')
@@ -268,6 +304,8 @@ def _coerce_numeric_string(value):
 def score_prediction(dt_name, prediction, reference):
     if is_unscored_dataset(dt_name) or reference is None:
         return None
+    if dt_name in {'ruler_niah'}:
+        return ruler_string_match(prediction, reference)
     if dt_name == 'math':
         return math_equal(prediction, reference)
     return finqa_equal(_coerce_numeric_string(prediction), _coerce_numeric_string(reference), False)
@@ -282,6 +320,9 @@ def extract_prediction_from_generation(dt_name, generated_text):
     if dt_name == 'truthfulqa':
         lines = [line.strip() for line in text.strip().splitlines() if line.strip()]
         return lines[0] if lines else text.strip()
+
+    if dt_name in ['ruler_niah']:
+        return text.strip()
 
     if dt_name in ['strategyqa', 'sports']:
         marked = regex.findall(r'(?:ANSWER\s*:|So the answer is)\s*(yes|no)\b', text, flags=regex.I)

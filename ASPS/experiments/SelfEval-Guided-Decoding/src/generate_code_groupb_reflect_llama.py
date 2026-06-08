@@ -47,6 +47,7 @@ def parse_args():
             "gsm8k_cot",
             "math",
             "truthfulqa",
+            "ruler_niah",
         ],
     )
     parser.add_argument("--input_file", required=True, type=str)
@@ -149,6 +150,18 @@ def reflection_prompt(question_text, first_solution, dt_name, reasoning_type):
             f"Attempted answer:\n{first_solution}\n\n"
             "Check whether the answer is factual, literal, and not misleading. "
             "Set should_restart to true only for a clear factual or answer-format error. "
+            "Keep reflection under 30 words. Do not include final_answer or replacement text.\n"
+            'JSON schema: {"has_error": false, "error_type": "none", '
+            '"should_restart": false, "reflection": "brief reason"}\n'
+        )
+    if reasoning_type == "retrieval":
+        return (
+            "You are a strict verifier. Do not rewrite or continue the answer.\n"
+            "Return exactly one JSON object and no extra text.\n\n"
+            f"Question and context:\n{question_text}\n\n"
+            f"Attempted answer:\n{first_solution}\n\n"
+            "Check whether the answer directly retrieves the requested value from the context. "
+            "Set should_restart to true only for a clear retrieval or answer-format error. "
             "Keep reflection under 30 words. Do not include final_answer or replacement text.\n"
             'JSON schema: {"has_error": false, "error_type": "none", '
             '"should_restart": false, "reflection": "brief reason"}\n'

@@ -61,6 +61,27 @@ def _normalize_math_answer(answer):
 def normalize_dataset_example(dt_name, example):
     row = dict(example)
 
+    if dt_name == 'ruler_niah':
+        question = row.get('question') or row.get('input') or row.get('prompt')
+        outputs = row.get('outputs')
+        answer = row.get('answer')
+        if answer is None:
+            answer = outputs
+        if isinstance(answer, str) and answer.startswith('['):
+            try:
+                import json
+                answer = json.loads(answer)
+            except Exception:
+                pass
+        row.update({
+            'question': question,
+            'answer': answer,
+            'outputs': outputs if outputs is not None else answer,
+            'type': row.get('type', 'ruler_niah'),
+            'length': row.get('length'),
+        })
+        return row
+
     if dt_name == 'math':
         question = row.get('question') or row.get('problem')
         answer = row.get('answer')

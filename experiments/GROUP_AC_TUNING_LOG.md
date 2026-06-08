@@ -1,8 +1,123 @@
 # Group A/C Tuning Log
 
-Last updated: 2026-06-03
+Last updated: 2026-06-08
 
 本文件专门记录 Group A 和 Group C 的调参过程。后续每一轮服务器实验、结果回传、本地分析和下一轮参数选择，都继续追加到这里。
+
+## 0. Control Groups
+
+### 0.1 Group D: CNTP / Cautious Next Token Prediction
+
+新增 Group D 作为论文方法对照，不作为当前 Group A/C 优化目标的一部分。
+
+代码来源：项目内 `ASPS/` 保留的 Cautious Next Token Prediction / CNTP 源码与 patched `transformers` 生成逻辑。
+
+接入方式：
+
+- 生成脚本：`ASPS/experiments/SelfEval-Guided-Decoding/src/generate_code_groupd_cautious_llama.py`
+- 训练入口：`train.py` 的 `group_d`
+- 汇总字段：`scripts/collect_results.py` 读取 `groupd_metrics`
+- 默认配置：`configs/group_ac/d_cautious_first100.yaml`
+- 运行脚本：`scripts/run_group_d_cautious_first100.sh`
+
+默认 first100 参数：
+
+| Config | Method | Low Entropy | High Entropy | Max Trials | Sampling |
+|---|---|---:|---:|---:|---|
+| `d_cautious_first100` | Group D / CNTP perplexity | 0.01 | 1.5 | 10 | greedy, `n_samples=1`, `mini_n_samples=1` |
+
+注意：Group D 依赖 ASPS 的 custom transformers。服务器运行前需要确认当前环境已经重新安装项目内 patched 包；否则 CNTP flag 可能不会真正进入论文的生成逻辑。
+
+本地检查记录（2026-06-08）：
+
+| Check | Result |
+|---|---|
+| Python AST syntax check | 11314 个 `.py` 文件通过 |
+| YAML parse check | 315 个 YAML/YML 文件通过 |
+| Shell syntax check | 所有 `.sh` 文件 `bash -n` 通过 |
+| Train dry-run | `configs/smoke.yaml` + `configs/group_ac/*.yaml` 共 63 个配置通过 |
+| Group D dry-run | 生成 `gsm8k/strategyqa/math/truthfulqa` 4 个 first100 job，参数包含 `--cntp_mode perplexity --max_trials 10` |
+| Result collect check | 临时 Group D registry 正确汇总 `groupd_metrics.wall_time` |
+| Export check | 临时 Group D 结果可被 `export_results_for_github.py` 打包 |
+| CNTP source check | `gsm8k_strategyqa` 与 `math_truthfulqa` 两套 patched transformers 均包含 CNTP 分发与 `_sample_reflect_perplexity*` 方法 |
+| Whitespace check | `git diff --check` 通过 |
+
+## Planned Run 20260608: RULER Small Overnight Sweep
+
+### Goal
+
+本轮按“对照 + 已知强参数 + GroupD + 新探索”的结构加入一个小规模
+RULER/NIAH 长上下文检索数据集，同时保留完整的旧文本数据面：
+GSM8K/StrategyQA/MATH/TruthfulQA first100 + RULER small。
+
+RULER 接入口径：
+
+- 任务：`ruler_niah`
+- 样本数：20 条，`start=0, end=19`
+- 默认文件：`ASPS/experiments/SelfEval-Guided-Decoding/data/ruler/ruler_niah_words_2k_small.jsonl`
+- 生成脚本：`scripts/prepare_ruler_small.py`
+- schema：兼容 RULER 常见 JSONL 字段 `input` / `outputs` / `length`
+- 单独生成长度：约 2K words context，`max_tokens=64`
+- 评分：expected outputs 在模型输出中做规范化字符串匹配
+
+选择依据：
+
+- 对照组：Baseline、Group B 必须和 A/C 在同一批 RULER 样本上重跑，避免只拿旧 first100 结论外推。
+- Group C finalist：`c_k2_h145_a003_d16_margin005`
+- Group A finalist：`a_k2_h16_d20`
+- Group A 低延迟备选：`a_k2_h155_d20_margin002`
+- Group D/CNTP：作为论文原方法对照，和 A/C 在同一数据面上比较。
+- RULER 先只做小规模加测，不把它直接作为最终排名主指标；主要观察长上下文检索下各组是否出现明显崩溃、超慢或无效 switch。
+
+### Configs To Run
+
+| Config | Group | k | entropy | draft | fallback | alpha | margin | Type | Purpose |
+|---|---|---:|---:|---:|---:|---:|---:|---|---|
+| `ruler_baseline_groupb` | Baseline + B | - | - | - | - | - | - | control | 对照组重跑旧四数据集 + RULER，给 A/C/D 同题比较基线 |
+| `a_ruler_k2_h16_d20_margin001` | A | 2 | 1.60 | 20 | 32 | - | 0.001 | finalist | A 主线加极轻 margin，测试 RULER 是否减少误 switch |
+| `a_ruler_k2_h16_d20` | A | 2 | 1.60 | 20 | 32 | - | 0 | finalist | A 当前均衡主线，加 RULER 小规模检索压力测试 |
+| `a_ruler_k2_h155_d20_margin002` | A | 2 | 1.55 | 20 | 32 | - | 0.002 | finalist | A 低延迟备选，检查 RULER 稳定性 |
+| `c_ruler_k2_h145_a003_d16_margin005` | C | 2 | 1.45 | 16 | 32 | 0.03 | 0.005 | finalist | C 当前主线，加 RULER 小规模检索压力测试 |
+| `d_ruler_cautious_first100` | D/CNTP | - | high=1.50 | - | - | - | - | control | CNTP 论文方法同数据面对照，检查是否值得作为额外 baseline |
+| `a_ruler_k2_h165_d18_margin001` | A | 2 | 1.65 | 18 | 32 | - | 0.001 | explore | 提高阈值并缩短 draft，尝试在长上下文下压 A 延迟 |
+| `a_ruler_k2_h16_d16_margin001` | A | 2 | 1.60 | 16 | 32 | - | 0.001 | explore | 保持触发阈值，缩短 draft，观察准确率是否还能稳定 |
+| `c_ruler_k2_h1475_a0025_d16_margin005` | C | 2 | 1.475 | 16 | 32 | 0.025 | 0.005 | explore | 提高阈值并降低长度权重，减少长上下文中的过长路径偏好 |
+| `c_ruler_k2_h145_a0025_d14_margin005` | C | 2 | 1.45 | 14 | 32 | 0.025 | 0.005 | explore | 缩短 C draft 并降低长度权重，主攻延迟 |
+
+### Local Preparation
+
+已在本地准备：
+
+```text
+scripts/prepare_ruler_small.py
+scripts/run_group_ac_ruler_small_overnight.sh
+configs/group_ac/ruler_baseline_groupb.yaml
+configs/group_ac/a_ruler_k2_h16_d20.yaml
+configs/group_ac/a_ruler_k2_h16_d20_margin001.yaml
+configs/group_ac/a_ruler_k2_h155_d20_margin002.yaml
+configs/group_ac/c_ruler_k2_h145_a003_d16_margin005.yaml
+configs/group_ac/d_ruler_cautious_first100.yaml
+configs/group_ac/a_ruler_k2_h165_d18_margin001.yaml
+configs/group_ac/a_ruler_k2_h16_d16_margin001.yaml
+configs/group_ac/c_ruler_k2_h1475_a0025_d16_margin005.yaml
+configs/group_ac/c_ruler_k2_h145_a0025_d14_margin005.yaml
+```
+
+服务器运行命令：
+
+```bash
+nohup bash scripts/run_group_ac_ruler_small_overnight.sh > server_run_ruler_small.log 2>&1 &
+```
+
+### Decision Rules
+
+1. RULER small 只做长上下文稳定性压力测试，不替代 GSM8K/StrategyQA/MATH 的主调参目标。
+2. 若某配置在 RULER 上准确率明显低于其他 finalist，同时 `switches` 高或 `length_weight_overrides` 多，优先怀疑长上下文下误切换。
+3. 若 `a_ruler_k2_h165_d18_margin001` 比 A finalist 更快且不掉主数据集准确率，下一轮 A 可继续提高阈值或缩短 draft。
+4. 若 C 的 `alpha=0.025` 比 `0.03` 更稳，说明 RULER 检索不适合过强长度偏置。
+5. 若 GroupD 明显慢但准确率没有优势，则后续只保留为论文对照，不纳入主优化线。
+6. 若 RULER 全部接近满分但延迟显著变慢，下一步再提高 RULER context 长度或换 RULER multi-key / variable tracking。
+7. TruthfulQA 仍只作为 latency / generation-shape 参考，不纳入最终 accuracy 结论。
 
 ## 1. Optimization Goal
 

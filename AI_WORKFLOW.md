@@ -9,6 +9,7 @@
 - `ASPS/`: 当前实验代码目录，由 CNTP 官方源码改造而来。
 - `CNTP_reference/`: CNTP 官方 GitHub 仓库的干净对照副本，来源为 `https://github.com/wyzjack/CNTP.git`，只用于本地 diff / 对照。
 - `Llama大小模型协作推理实验方案.md`: 实验设计、组别定义、运行计划与结果分析的主文档。
+- `Group D`: CNTP / Cautious Next Token Prediction 论文方法对照组，只作为 control，不参与 Group A/C 参数最优选择。
 
 不要再把当前实验代码称为 `CNTP/`。`CNTP` 只作为论文方法或上游参考源码出现。
 
@@ -288,6 +289,43 @@ configs/group_ac/
 bash scripts/run_group_ac_experiments.sh
 ```
 
+CNTP 论文方法对照组 Group D 单独运行：
+
+```bash
+bash scripts/run_group_d_cautious_first100.sh
+```
+
+Group D 依赖 ASPS patched transformers。服务器运行前如果不确定 editable install 是否仍指向当前 `ASPS/` 路径，先重新安装：
+
+```bash
+cd /root/autodl-tmp/Project_2/ASPS/custom_transformers_packages/gsm8k_strategyqa
+pip install -e .
+cd /root/autodl-tmp/Project_2
+```
+
+RULER/NIAH 小规模长上下文加测批次：
+
+```bash
+bash scripts/run_group_ac_ruler_small_overnight.sh
+```
+
+默认队列包含 Baseline、Group B、已知较优的 A/C 参数、Group D/CNTP，
+以及少量新的 A/C 探索参数；每个配置都会跑 GSM8K、StrategyQA、MATH、
+TruthfulQA first100 和 RULER small。
+
+默认会先生成：
+
+```text
+ASPS/experiments/SelfEval-Guided-Decoding/data/ruler/ruler_niah_words_2k_small.jsonl
+```
+
+如果服务器上已经有官方 RULER 生成的 `validation.jsonl`，且字段为 `input` / `outputs`，可以用环境变量覆盖：
+
+```bash
+export RULER_NIAH_FILE=/path/to/validation.jsonl
+bash scripts/run_group_ac_ruler_small_overnight.sh
+```
+
 可选控制：
 
 ```bash
@@ -373,7 +411,7 @@ python3 scripts/collect_results.py \
 - `experiments/result_exports/<bundle_name>/registry_local.csv`: 本地重新汇总。
 - `experiments/result_exports/<bundle_name>/outputs/**/config.yaml`: 每个实验实际使用的配置。
 - `experiments/result_exports/<bundle_name>/outputs/**/logs/*.log`: 训练 / 推理日志。
-- `experiments/result_exports/<bundle_name>/outputs/**/results/**/*.jsonl`: 每个样本的完整输出与 `groupa_metrics` / `groupc_metrics` / `groupb_metrics`。
+- `experiments/result_exports/<bundle_name>/outputs/**/results/**/*.jsonl`: 每个样本的完整输出与 `groupa_metrics` / `groupc_metrics` / `groupb_metrics` / `groupd_metrics`。
 
 Group A 重点指标：
 
@@ -408,6 +446,17 @@ Group B 重点指标：
 - `total_output_tokens`
 - `hit_reflection_limit`
 - wall-clock time
+
+Group D 重点指标：
+
+- `cntp_mode`
+- `entropy_threshold_low`
+- `entropy_threshold_high`
+- `max_trials`
+- `avg_sample_wall_time`
+- `p90_sample_wall_time`
+- `job_duration_sec`
+- accuracy compared with Baseline / Group B / Group A / Group C on the same slice
 
 ## 8. 下一轮修改原则
 

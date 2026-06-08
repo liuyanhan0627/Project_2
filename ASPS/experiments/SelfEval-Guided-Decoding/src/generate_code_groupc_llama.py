@@ -62,6 +62,7 @@ def parse_args():
             "gsm8k_cot",
             "math",
             "truthfulqa",
+            "ruler_niah",
         ],
     )
     parser.add_argument("--input_file", required=True, type=str)

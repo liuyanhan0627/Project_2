@@ -18,6 +18,7 @@ GROUP_SCRIPTS = {
     "group_a": "generate_code_groupa_llama.py",
     "group_b": "generate_code_groupb_reflect_llama.py",
     "group_c": "generate_code_groupc_llama.py",
+    "group_d": "generate_code_groupd_cautious_llama.py",
 }
 
 REPO_ROOT = Path(__file__).resolve().parent

@@ -8,6 +8,7 @@ This directory now contains code for the text experiment groups in the proposed 
 | Group A: async small draft + target PPL verify | `src/generate_code_groupa_llama.py` |
 | Group C: Group A + path-length weighted selection | `src/generate_code_groupc_llama.py` |
 | Group B: target reflection + one restart | `src/generate_code_groupb_reflect_llama.py` |
+| Group D: CNTP / Cautious Next Token Prediction control | `src/generate_code_groupd_cautious_llama.py` |
 
 ## Dual A800 Plan
 
@@ -59,6 +60,8 @@ bash scripts/group_experiment/run_first_round_dual_a800.sh
 - Group C uses both GPUs like Group A, but selects paths with `avg_logprob + alpha * length_weight`.
 - Baseline and Group B use only `cuda:0`.
 - Baseline and Group B must use standard greedy/sample decoding; CNTP multi-trial decoding is only enabled by explicit `cntp_perplexity`, `cntp_same_num_trials`, or `cntp_negatively_correlated` flags.
+- Group D is the explicit CNTP paper-method control. It uses the patched `transformers` CNTP path through `cntp_perplexity=True` by default, while keeping the current dataset loading and scoring code.
 - Group A includes batched candidate PPL verification. Serial path scoring should only be used for debugging or ablation.
 - Group C records base scores, length weights, weighted scores, and `length_weight_overrides` in `groupc_metrics`.
 - Group B records `should_restart`, first solution tokens, reflection tokens, and wall-clock time in `groupb_metrics`.
+- Group D records CNTP settings and wall-clock time in `groupd_metrics`; run it from the repo root with `bash scripts/run_group_d_cautious_first100.sh`.
