@@ -1,7 +1,7 @@
 import os
 import argparse
 import inspect
-import time
+import time as time_module
 from datetime import datetime
 
 import torch
@@ -263,9 +263,9 @@ if __name__ == "__main__":
             print('======================')
             print(f'Index: {exp["index"]}\nQuestion: {exp["question"]}')
         
-        sample_started = time.time()
+        sample_started = time_module.time()
         raw_results = prompt_the_result(model, tokenizer, prompts, attn_masks, generation_config, args.n_samples)
-        sample_wall_time = time.time() - sample_started
+        sample_wall_time = time_module.time() - sample_started
         groupd_metrics = {
             "wall_time": sample_wall_time / max(len(batch), 1),
             "cntp_mode": args.cntp_mode,
