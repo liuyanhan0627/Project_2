@@ -11,6 +11,7 @@ CNTP_reference/
 /outputs/
 /checkpoints/
 /server_logs/
+/nscc_logs/
 /experiments/registry.csv
 !/experiments/result_exports/
 !/experiments/result_exports/**

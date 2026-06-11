@@ -24,6 +24,21 @@
 
 服务器 `git pull` 后，后续实验命令都应从 `ASPS/experiments/SelfEval-Guided-Decoding` 进入。
 
+## NSCC Running
+
+NSCC / PBS 服务器运行说明见 `docs/NSCC_RUNBOOK.md`。常用入口：
+
+```bash
+PROJECT=personal-e1547010 bash scripts/nscc_interactive.sh
+
+PROJECT=personal-e1547010 \
+WALLTIME=02:00:00 \
+RUN_SCRIPT=scripts/run_group_ac_daytime_k2c_sweep.sh \
+bash scripts/nscc_submit.sh
+```
+
+Group A/C 默认使用两张 GPU：大模型在 `cuda:0`，小模型在 `cuda:1`。如果只租一张卡，优先跑 baseline / Group B，或另建单卡配置。
+
 ## Systematic Experiments
 
 现在可以用根目录的 `train.py` 统一调度实验：

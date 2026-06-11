@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+#PBS -j oe
+
+set -euo pipefail
+
+cd "${PBS_O_WORKDIR:-$PWD}"
+mkdir -p nscc_logs
+
+RUN_SCRIPT="${RUN_SCRIPT:-scripts/run_group_ac_daytime_k2c_sweep.sh}"
+EXPORT_NAME="${EXPORT_NAME:-$(date +%Y%m%d-%H%M%S)_nscc}"
+OUTPUT_ROOT="${OUTPUT_ROOT:-outputs/${EXPORT_NAME}}"
+LOG_FILE="nscc_logs/${EXPORT_NAME}.${PBS_JOBID:-manual}.log"
+
+exec > >(tee -a "${LOG_FILE}") 2>&1
+
+echo "=== NSCC ASPS job ==="
+echo "started_at: $(date)"
+echo "host: $(hostname)"
+echo "workdir: $(pwd)"
+echo "job_id: ${PBS_JOBID:-manual}"
+echo "run_script: ${RUN_SCRIPT}"
+echo "export_name: ${EXPORT_NAME}"
+echo "output_root: ${OUTPUT_ROOT}"
+
+ENV_FILE="${NSCC_ENV_FILE:-${HOME}/.asps_nscc_env}"
+if [[ -f "${ENV_FILE}" ]]; then
+  # shellcheck disable=SC1090
+  source "${ENV_FILE}"
+fi
+
+VENV_PATH="${VENV_PATH:-${HOME}/collmenv}"
+if [[ -f "${VENV_PATH}/bin/activate" ]]; then
+  # shellcheck disable=SC1091
+  source "${VENV_PATH}/bin/activate"
+else
+  echo "Warning: virtualenv not found at ${VENV_PATH}; using current Python." >&2
+fi
+
+if [[ -z "${HF_TOKEN:-}" || "${HF_TOKEN}" == "YOUR_HF_TOKEN" ]]; then
+  echo "HF_TOKEN is not set. Put export HF_TOKEN=... in ${ENV_FILE} or export it before qsub -V." >&2
+  exit 2
+fi
+
+export PYTHONUNBUFFERED=1
+export TOKENIZERS_PARALLELISM="${TOKENIZERS_PARALLELISM:-false}"
+export HF_HOME="${HF_HOME:-${HOME}/.cache/huggingface}"
+export DATAHOME="${DATAHOME:-ASPS/experiments/SelfEval-Guided-Decoding/data}"
+export MATH_FILE="${MATH_FILE:-${DATAHOME}/MATH/test.jsonl}"
+export TRUTHFULQA_FILE="${TRUTHFULQA_FILE:-${DATAHOME}/truthfulqa/TruthfulQA.csv}"
+export BIG_MODEL="${BIG_MODEL:-meta-llama/Meta-Llama-3.1-8B-Instruct}"
+export SMALL_MODEL="${SMALL_MODEL:-meta-llama/Llama-3.2-1B-Instruct}"
+export OUTPUT_ROOT
+export EXPORT_NAME
+
+echo "python: $(command -v python3)"
+python3 -V
+if command -v nvidia-smi >/dev/null 2>&1; then
+  nvidia-smi
+fi
+
+bash "${RUN_SCRIPT}"
+
+echo "finished_at: $(date)"
+echo "outputs: ${OUTPUT_ROOT}"
+echo "log_file: ${LOG_FILE}"

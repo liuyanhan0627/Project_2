@@ -1,8 +1,92 @@
 # Group A/C Tuning Log
 
-Last updated: 2026-06-08
+Last updated: 2026-06-12
 
 本文件专门记录 Group A 和 Group C 的调参过程。后续每一轮服务器实验、结果回传、本地分析和下一轮参数选择，都继续追加到这里。
+
+## Planned Run 20260612: Group A/C Nightly Sweep + Group D Paper Parameters
+
+### Goal
+
+本轮方案已确认。调参主线保持不变：
+
+- 小模型继续使用 `meta-llama/Llama-3.2-1B-Instruct`
+- 不切换到 0.5B 小模型
+- 调参阶段不对小模型所在 A100 做限速
+- Baseline 和 Group B 本轮不重跑，继续使用已有对照结果
+- 数据面继续使用 GSM8K/StrategyQA/MATH/TruthfulQA first100，加 RULER/NIAH small first20
+
+本轮包含两部分：
+
+1. 重新跑 Group D/CNTP，使用论文推荐参数，修正前一轮 `temperature=0.0, top_p=1.0` 与论文设置不一致的问题。
+2. 继续跑 10 组 Group A/C 参数，其中 A 6 组围绕当前最好区域细调，C 4 组保持 `k=2` 并继续探索小模型多路径采纳策略。
+
+### Group D Paper-Parameter Rerun
+
+Group D 使用 CNTP/Cautious Next Token Prediction 论文口径：
+
+| Dataset | Config | Temperature | Top-p | Hmin | Hmax | Max Trials | Notes |
+|---|---|---:|---:|---:|---:|---:|---|
+| GSM8K | `d_paper_gsm8k_first100` | 1.2 | 0.9 | 0.01 | 1.5 | 10 | 论文 Llama CNTP GSM8K 温度 |
+| StrategyQA | `d_paper_strategyqa_first100` | 0.8 | 0.9 | 0.01 | 1.5 | 10 | 论文 Llama CNTP StrategyQA 温度 |
+| MATH | `d_paper_math_first100` | 0.6 | 0.9 | 0.01 | 1.5 | 10 | 论文 Llama CNTP MATH 温度 |
+| TruthfulQA | `d_paper_truthfulqa_first100` | 0.8 | 0.9 | 0.01 | 1.5 | 10 | 论文 TruthfulQA CNTP 温度 |
+| RULER/NIAH | `d_paper_ruler_first20` | 0.8 | 0.9 | 0.01 | 1.5 | 10 | 补充 sanity check，论文未报告 RULER |
+
+拆成单数据集 config 的原因：当前 `train.py` 会把 `groups.group_d.args.temperature` 作为 group 级参数应用到整个 config；若放在同一个 config 里，无法按 dataset 切换论文温度。
+
+### Group A/C Configs To Run
+
+| Config | Group | k | Entropy | Draft | Fallback | Alpha | Margin | Purpose |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+| `a_ruler_k2_h158_d20_margin001` | A | 2 | 1.58 | 20 | 32 | - | 0.001 | 在当前最优 A 附近稍降阈值，看能否提升准确率 |
+| `a_ruler_k2_h162_d20_margin001` | A | 2 | 1.62 | 20 | 32 | - | 0.001 | 在当前最优 A 附近稍升阈值，测试更保守触发 |
+| `a_ruler_k2_h16_d18_margin001` | A | 2 | 1.60 | 18 | 32 | - | 0.001 | 保持阈值，缩短 draft，主攻延迟 |
+| `a_ruler_k2_h158_d18_margin0015` | A | 2 | 1.58 | 18 | 32 | - | 0.0015 | 降阈值加短 draft，同时略增 margin 抑制误切 |
+| `a_ruler_k2_h155_d18_margin002` | A | 2 | 1.55 | 18 | 32 | - | 0.002 | 更积极触发但更严格 switch，验证准确率收益 |
+| `a_ruler_k2_h16_d20_f28_margin001` | A | 2 | 1.60 | 20 | 28 | - | 0.001 | 减小 fallback window，测试延迟恢复空间 |
+| `c_ruler_k2_h145_a003_d14_margin005` | C | 2 | 1.45 | 14 | 32 | 0.030 | 0.005 | C 主线缩短 draft，保留原 alpha |
+| `c_ruler_k2_h145_a0035_d14_margin005` | C | 2 | 1.45 | 14 | 32 | 0.035 | 0.005 | 增强长度偏置，看是否改善多路径采纳 |
+| `c_ruler_k2_h1425_a003_d14_margin005` | C | 2 | 1.425 | 14 | 32 | 0.030 | 0.005 | 更积极触发，观察是否提升准确率 |
+| `c_ruler_k2_h145_a0025_d12_margin005` | C | 2 | 1.45 | 12 | 32 | 0.025 | 0.005 | 更短 draft 和更弱长度偏置，主攻延迟 |
+
+### Local Preparation
+
+本地已准备：
+
+```text
+scripts/run_group_ac_paperd_nightly_sweep.sh
+configs/group_ac/a_ruler_k2_h158_d20_margin001.yaml
+configs/group_ac/a_ruler_k2_h162_d20_margin001.yaml
+configs/group_ac/a_ruler_k2_h16_d18_margin001.yaml
+configs/group_ac/a_ruler_k2_h158_d18_margin0015.yaml
+configs/group_ac/a_ruler_k2_h155_d18_margin002.yaml
+configs/group_ac/a_ruler_k2_h16_d20_f28_margin001.yaml
+configs/group_ac/c_ruler_k2_h145_a003_d14_margin005.yaml
+configs/group_ac/c_ruler_k2_h145_a0035_d14_margin005.yaml
+configs/group_ac/c_ruler_k2_h1425_a003_d14_margin005.yaml
+configs/group_ac/c_ruler_k2_h145_a0025_d12_margin005.yaml
+configs/group_ac/d_paper_gsm8k_first100.yaml
+configs/group_ac/d_paper_strategyqa_first100.yaml
+configs/group_ac/d_paper_math_first100.yaml
+configs/group_ac/d_paper_truthfulqa_first100.yaml
+configs/group_ac/d_paper_ruler_first20.yaml
+```
+
+服务器运行命令：
+
+```bash
+nohup bash scripts/run_group_ac_paperd_nightly_sweep.sh > server_run_paperd_nightly.log 2>&1 &
+```
+
+### Decision Rules
+
+1. A/C 主指标继续看 GSM8K、StrategyQA、MATH 的自动 accuracy 与 latency；TruthfulQA 暂不纳入 accuracy 结论。
+2. RULER/NIAH small 如果继续全 1.0，主要作为长上下文 latency 和稳定性参考。
+3. A 若 `draft=18` 不掉准确率，则下一轮优先继续压 draft 或 fallback；若准确率掉，回到 `draft=20` 周围微调。
+4. C 若 `alpha=0.035` 明显提升准确率但延迟升高可接受，则说明长度偏置仍有空间；若不提升，下一轮回到 `0.025-0.030` 区间。
+5. GroupD 若使用论文参数后仍明显慢且准确率无优势，后续只保留为论文对照，不继续大量调参。
+6. 若 GroupD 论文参数在 GSM8K/MATH 有明显改善，需要单独分析 CNTP sampling 与我们 A/C 异步小模型路径搜索的差异。
 
 ## 0. Control Groups
 
