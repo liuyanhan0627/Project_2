@@ -28,6 +28,24 @@ if [[ -f "${ENV_FILE}" ]]; then
   source "${ENV_FILE}"
 fi
 
+if ! type module >/dev/null 2>&1 && [[ -f /opt/cray/pe/modules/3.2.11.6/init/bash ]]; then
+  # shellcheck disable=SC1091
+  source /opt/cray/pe/modules/3.2.11.6/init/bash
+fi
+
+if type module >/dev/null 2>&1; then
+  if [[ "${NSCC_PURGE_MODULES:-1}" == "1" ]]; then
+    module purge
+  fi
+  read -r -a NSCC_MODULE_LIST <<< "${NSCC_MODULES:-pytorch/2.6.0-py3-cu11.8}"
+  for module_name in "${NSCC_MODULE_LIST[@]}"; do
+    module load "${module_name}"
+  done
+  module list
+else
+  echo "Warning: NSCC module command is not available." >&2
+fi
+
 VENV_PATH="${VENV_PATH:-${HOME}/collmenv}"
 if [[ -f "${VENV_PATH}/bin/activate" ]]; then
   # shellcheck disable=SC1091
@@ -54,6 +72,7 @@ export EXPORT_NAME
 
 echo "python: $(command -v python3)"
 python3 -V
+python3 -m pip --version || true
 if command -v nvidia-smi >/dev/null 2>&1; then
   nvidia-smi
 fi
