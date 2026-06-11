@@ -41,7 +41,7 @@ COMMON_PACKAGES=(
   func_timeout
   jsonlines
   matplotlib
-  openai
+  openai==0.28.1
   pandas
   python-dateutil
   pyyaml
