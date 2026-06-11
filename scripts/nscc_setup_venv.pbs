@@ -57,6 +57,7 @@ python -m pip install --upgrade pip setuptools wheel
 COMMON_PACKAGES=(
   accelerate
   func_timeout
+  ipdb
   jsonlines
   matplotlib
   openai==0.28.1
