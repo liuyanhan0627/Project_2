@@ -45,18 +45,25 @@ git clone <your-repo-url> ASPS-workspace
 cd ASPS-workspace
 ```
 
-Create or reuse a virtual environment. The scripts default to
-`~/collmenv`, matching the shared guide:
+Create or reuse a virtual environment. The scripts default to `~/collmenv`,
+matching the shared guide. The recommended NSCC path is to use the system
+PyTorch module and install the lighter Python dependencies into that virtualenv:
 
 ```bash
-python3 -m venv ~/collmenv
-source ~/collmenv/bin/activate
-python3 -m pip install --upgrade pip
+qsub -P personal-e1547010 \
+  -q normal \
+  -l select=1:ncpus=4:mem=16gb \
+  -l walltime=00:30:00 \
+  scripts/nscc_setup_venv.pbs
 ```
 
-Install the same Python packages you used on AutoDL. The recommended NSCC path
-is to use the system PyTorch module and install the lighter Python dependencies
-into your user site-packages:
+The setup script loads `pytorch/2.6.0-py3-cu11.8`, creates `~/collmenv`, and
+installs the standard Python dependencies adapted from the AutoDL
+`ASPS/envs/gsm8k_strategyqa.yml` environment. By default it installs regular
+Hugging Face `transformers`, which is enough for Group A/C and baseline runs.
+
+If you only want to install into your user site-packages instead of a
+virtualenv, use:
 
 ```bash
 qsub -P personal-e1547010 \
@@ -65,10 +72,6 @@ qsub -P personal-e1547010 \
   -l walltime=00:30:00 \
   scripts/nscc_install_deps.pbs
 ```
-
-The install script loads `pytorch/2.6.0-py3-cu11.8` and installs the standard
-Python dependencies with `pip install --user`. By default it installs regular
-Hugging Face `transformers`, which is enough for Group A/C and baseline runs.
 
 Group D/CNTP needs the patched ASPS `transformers` package in
 `ASPS/custom_transformers_packages/gsm8k_strategyqa`. On the current NSCC
@@ -82,7 +85,9 @@ Create a private environment file on NSCC:
 cat > ~/.asps_nscc_env <<'EOF'
 export HF_TOKEN=hf_your_token_here
 export NSCC_MODULES="pytorch/2.6.0-py3-cu11.8"
-export VENV_PATH=
+export VENV_PATH=$HOME/collmenv
+export HF_HOME=$HOME/scratch/hf_cache
+export TRANSFORMERS_CACHE=$HOME/scratch/hf_cache
 export BIG_MODEL=meta-llama/Meta-Llama-3.1-8B-Instruct
 export SMALL_MODEL=meta-llama/Llama-3.2-1B-Instruct
 EOF

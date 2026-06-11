@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+#PBS -j oe
+
+set -euo pipefail
+
+cd "${PBS_O_WORKDIR:-$PWD}"
+mkdir -p nscc_logs
+LOG_FILE="nscc_logs/setup_venv.${PBS_JOBID:-manual}.log"
+exec > >(tee -a "${LOG_FILE}") 2>&1
+
+echo "=== NSCC ASPS virtualenv setup ==="
+echo "started_at: $(date)"
+echo "host: $(hostname)"
+echo "workdir: $(pwd)"
+
+if ! type module >/dev/null 2>&1 && [[ -f /opt/cray/pe/modules/3.2.11.6/init/bash ]]; then
+  # shellcheck disable=SC1091
+  source /opt/cray/pe/modules/3.2.11.6/init/bash
+fi
+
+if type module >/dev/null 2>&1; then
+  module purge
+  module load "${NSCC_PYTORCH_MODULE:-pytorch/2.6.0-py3-cu11.8}"
+  module list
+else
+  echo "NSCC module command is not available." >&2
+  exit 1
+fi
+
+export PYTHONUNBUFFERED=1
+export PIP_CACHE_DIR="${PIP_CACHE_DIR:-${HOME}/scratch/pip-cache}"
+mkdir -p "${PIP_CACHE_DIR}"
+
+VENV_PATH="${VENV_PATH:-${HOME}/collmenv}"
+VENV_ARGS=()
+if [[ "${VENV_SYSTEM_SITE_PACKAGES:-0}" == "1" ]]; then
+  VENV_ARGS+=(--system-site-packages)
+fi
+
+python3 -V
+python3 -m pip --version
+
+if [[ ! -f "${VENV_PATH}/bin/activate" ]]; then
+  echo "Creating virtualenv at ${VENV_PATH}"
+  python3 -m venv "${VENV_ARGS[@]}" "${VENV_PATH}"
+else
+  echo "Reusing virtualenv at ${VENV_PATH}"
+fi
+
+# shellcheck disable=SC1091
+source "${VENV_PATH}/bin/activate"
+
+python -V
+python -m pip --version
+python -m pip install --upgrade pip setuptools wheel
+
+COMMON_PACKAGES=(
+  accelerate
+  func_timeout
+  jsonlines
+  matplotlib
+  openai==0.28.1
+  pandas
+  python-dateutil
+  pyyaml
+  regex
+  safetensors
+  sentencepiece
+  sympy
+  tenacity
+  tqdm
+)
+
+INSTALL_CNTP="${INSTALL_CNTP:-0}"
+if [[ "${INSTALL_CNTP}" == "1" ]]; then
+  echo "Installing patched ASPS transformers. This may fail on NSCC Python 3.13 because tokenizers<0.20 does not build there."
+  export PYO3_USE_ABI3_FORWARD_COMPATIBILITY="${PYO3_USE_ABI3_FORWARD_COMPATIBILITY:-1}"
+  python -m pip install --upgrade \
+    "${COMMON_PACKAGES[@]}" \
+    "huggingface-hub>=0.23.2,<1.0" \
+    "tokenizers>=0.19,<0.20"
+  python -m pip install --upgrade -e ASPS/custom_transformers_packages/gsm8k_strategyqa
+else
+  python -m pip install --upgrade \
+    "${COMMON_PACKAGES[@]}" \
+    "transformers>=4.44,<5"
+fi
+
+python - <<'PY'
+import importlib
+
+mods = [
+    "torch",
+    "transformers",
+    "yaml",
+    "pandas",
+    "tqdm",
+    "jsonlines",
+    "regex",
+    "func_timeout",
+    "sympy",
+    "matplotlib",
+    "openai",
+    "accelerate",
+    "sentencepiece",
+]
+
+for name in mods:
+    mod = importlib.import_module(name)
+    print(name, "OK", getattr(mod, "__version__", ""))
+PY
+
+if [[ "${INSTALL_CNTP}" != "1" ]]; then
+  python - <<'PY'
+from transformers import AutoModelForCausalLM, AutoTokenizer
+print("transformers Auto* imports OK")
+PY
+fi
+
+echo "venv_path: ${VENV_PATH}"
+echo "finished_at: $(date)"
+echo "log_file: ${LOG_FILE}"
