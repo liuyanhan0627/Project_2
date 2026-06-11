@@ -66,10 +66,15 @@ qsub -P personal-e1547010 \
   scripts/nscc_install_deps.pbs
 ```
 
-The install script loads `pytorch/2.6.0-py3-cu11.8`, installs Python
-dependencies with `pip install --user`, and installs the patched ASPS/CNTP
-`transformers` package from
-`ASPS/custom_transformers_packages/gsm8k_strategyqa`.
+The install script loads `pytorch/2.6.0-py3-cu11.8` and installs the standard
+Python dependencies with `pip install --user`. By default it installs regular
+Hugging Face `transformers`, which is enough for Group A/C and baseline runs.
+
+Group D/CNTP needs the patched ASPS `transformers` package in
+`ASPS/custom_transformers_packages/gsm8k_strategyqa`. On the current NSCC
+Python 3.13 module, that patched package requires an old `tokenizers` version
+that may need a separate Python <= 3.12 environment. Treat Group D as a
+separate setup step unless `INSTALL_CNTP=1` succeeds on your environment.
 
 Create a private environment file on NSCC:
 

@@ -28,6 +28,7 @@ else
 fi
 
 export PYTHONUNBUFFERED=1
+INSTALL_CNTP="${INSTALL_CNTP:-0}"
 export PYO3_USE_ABI3_FORWARD_COMPATIBILITY="${PYO3_USE_ABI3_FORWARD_COMPATIBILITY:-1}"
 export PIP_CACHE_DIR="${PIP_CACHE_DIR:-${HOME}/scratch/pip-cache}"
 mkdir -p "${PIP_CACHE_DIR}"
@@ -35,25 +36,35 @@ mkdir -p "${PIP_CACHE_DIR}"
 python3 -V
 python3 -m pip --version
 python3 -m pip install --user --upgrade pip setuptools wheel
-python3 -m pip install --user --upgrade \
-  accelerate \
-  func_timeout \
-  "huggingface-hub>=0.23.2,<1.0" \
-  jsonlines \
-  matplotlib \
-  openai \
-  pandas \
-  python-dateutil \
-  pyyaml \
-  regex \
-  safetensors \
-  sentencepiece \
-  sympy \
-  tenacity \
-  "tokenizers>=0.19,<0.20" \
+COMMON_PACKAGES=(
+  accelerate
+  func_timeout
+  jsonlines
+  matplotlib
+  openai
+  pandas
+  python-dateutil
+  pyyaml
+  regex
+  safetensors
+  sentencepiece
+  sympy
+  tenacity
   tqdm
+)
 
-python3 -m pip install --user --upgrade -e ASPS/custom_transformers_packages/gsm8k_strategyqa
+if [[ "${INSTALL_CNTP}" == "1" ]]; then
+  python3 -m pip install --user --upgrade \
+    "${COMMON_PACKAGES[@]}" \
+    "huggingface-hub>=0.23.2,<1.0" \
+    "tokenizers>=0.19,<0.20"
+  python3 -m pip install --user --upgrade -e ASPS/custom_transformers_packages/gsm8k_strategyqa
+else
+  python3 -m pip uninstall -y transformers || true
+  python3 -m pip install --user --upgrade \
+    "${COMMON_PACKAGES[@]}" \
+    "transformers>=4.44,<5"
+fi
 
 python3 - <<'PY'
 import importlib
@@ -78,6 +89,13 @@ for name in mods:
     mod = importlib.import_module(name)
     print(name, "OK", getattr(mod, "__version__", ""))
 PY
+
+if [[ "${INSTALL_CNTP}" != "1" ]]; then
+  python3 - <<'PY'
+from transformers import AutoModelForCausalLM, AutoTokenizer
+print("transformers Auto* imports OK")
+PY
+fi
 
 echo "finished_at: $(date)"
 echo "log_file: ${LOG_FILE}"
