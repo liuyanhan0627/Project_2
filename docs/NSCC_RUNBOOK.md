@@ -32,10 +32,24 @@ separate two-GPU jobs instead.
 
 ## First-Time Setup On NSCC
 
-SSH to the login node:
+SSH to the login node. For interactive work, prefer `ssh -tt` so NSCC gets a
+real pseudo-terminal for login banners, shell startup, `nano`, `tail -f`,
+`module`, and other terminal-oriented commands:
 
 ```bash
-ssh e1547010@aspire2a.nus.edu.sg
+ssh -tt nscc
+```
+
+If the local SSH alias is not configured, use:
+
+```bash
+ssh -tt e1547010@aspire2a.nus.edu.sg
+```
+
+For one-off non-interactive checks, a plain SSH command is fine:
+
+```bash
+ssh nscc 'hostname; whoami; pwd'
 ```
 
 Clone or upload the repo, then enter it:
