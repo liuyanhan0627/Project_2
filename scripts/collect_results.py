@@ -86,12 +86,23 @@ def summarize_jsonl_metrics(result_dir: Path, group: str) -> Dict[str, Any]:
         "group_c": "groupc_metrics",
         "group_b": "groupb_metrics",
         "group_d": "groupd_metrics",
+        "group_e": "groupe_metrics",
     }.get(group)
     metrics = [record.get(metric_key, {}) for record in records] if metric_key else []
     metrics = [metric for metric in metrics if isinstance(metric, dict)]
 
     sample_wall_times = [float(metric["wall_time"]) for metric in metrics if isinstance(metric.get("wall_time"), (int, float))]
     accepted_tokens = flatten_numbers(metric.get("accepted_tokens_per_verify", []) for metric in metrics)
+    avg_state_scores = [
+        float(metric["avg_state_score"])
+        for metric in metrics
+        if isinstance(metric.get("avg_state_score"), (int, float))
+    ]
+    best_state_scores = [
+        float(metric["best_state_score"])
+        for metric in metrics
+        if isinstance(metric.get("best_state_score"), (int, float))
+    ]
 
     return {
         "jsonl_files": len(jsonl_files),
@@ -108,6 +119,15 @@ def summarize_jsonl_metrics(result_dir: Path, group: str) -> Dict[str, Any]:
         "switch_margin_rejections": sum(int(metric.get("switch_margin_rejections", 0)) for metric in metrics),
         "avg_accepted_tokens_per_verify": statistics.mean(accepted_tokens) if accepted_tokens else None,
         "restart_count": sum(1 for metric in metrics if metric.get("should_restart") is True),
+        "tot_generate_calls": sum(int(metric.get("generate_calls", 0)) for metric in metrics),
+        "tot_evaluate_calls": sum(int(metric.get("evaluate_calls", 0)) for metric in metrics),
+        "tot_final_calls": sum(int(metric.get("final_calls", 0)) for metric in metrics),
+        "tot_generated_thoughts": sum(int(metric.get("generated_thoughts", 0)) for metric in metrics),
+        "tot_evaluated_states": sum(int(metric.get("evaluated_states", 0)) for metric in metrics),
+        "tot_avg_state_score": statistics.mean(avg_state_scores) if avg_state_scores else None,
+        "tot_best_state_score": statistics.mean(best_state_scores) if best_state_scores else None,
+        "big_input_tokens": sum(int(metric.get("big_input_tokens", 0)) for metric in metrics),
+        "big_output_tokens": sum(int(metric.get("big_output_tokens", 0)) for metric in metrics),
     }
 
 
@@ -175,6 +195,15 @@ def row_for_summary(run_dir: Path, summary_path: Path) -> Dict[str, Any]:
         "switch_margin_rejections": metric_summary["switch_margin_rejections"],
         "avg_accepted_tokens_per_verify": metric_summary["avg_accepted_tokens_per_verify"],
         "restart_count": metric_summary["restart_count"],
+        "tot_generate_calls": metric_summary["tot_generate_calls"],
+        "tot_evaluate_calls": metric_summary["tot_evaluate_calls"],
+        "tot_final_calls": metric_summary["tot_final_calls"],
+        "tot_generated_thoughts": metric_summary["tot_generated_thoughts"],
+        "tot_evaluated_states": metric_summary["tot_evaluated_states"],
+        "tot_avg_state_score": metric_summary["tot_avg_state_score"],
+        "tot_best_state_score": metric_summary["tot_best_state_score"],
+        "big_input_tokens": metric_summary["big_input_tokens"],
+        "big_output_tokens": metric_summary["big_output_tokens"],
         "is_best": best_row_marker(best_metric, summary_path),
         "summary_file": str(summary_path),
         "config_path": metadata.get("config_path", ""),
@@ -213,6 +242,15 @@ def row_for_run_without_summary(run_dir: Path) -> Dict[str, Any]:
         "switch_margin_rejections": "",
         "avg_accepted_tokens_per_verify": "",
         "restart_count": "",
+        "tot_generate_calls": "",
+        "tot_evaluate_calls": "",
+        "tot_final_calls": "",
+        "tot_generated_thoughts": "",
+        "tot_evaluated_states": "",
+        "tot_avg_state_score": "",
+        "tot_best_state_score": "",
+        "big_input_tokens": "",
+        "big_output_tokens": "",
         "is_best": "",
         "summary_file": "",
         "config_path": metadata.get("config_path", ""),
@@ -260,6 +298,15 @@ def write_registry(path: Path, rows: List[Dict[str, Any]]) -> None:
         "switch_margin_rejections",
         "avg_accepted_tokens_per_verify",
         "restart_count",
+        "tot_generate_calls",
+        "tot_evaluate_calls",
+        "tot_final_calls",
+        "tot_generated_thoughts",
+        "tot_evaluated_states",
+        "tot_avg_state_score",
+        "tot_best_state_score",
+        "big_input_tokens",
+        "big_output_tokens",
         "is_best",
         "summary_file",
         "config_path",

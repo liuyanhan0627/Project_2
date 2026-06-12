@@ -19,6 +19,7 @@ GROUP_SCRIPTS = {
     "group_b": "generate_code_groupb_reflect_llama.py",
     "group_c": "generate_code_groupc_llama.py",
     "group_d": "generate_code_groupd_cautious_llama.py",
+    "group_e": "generate_code_groupe_tot_llama.py",
 }
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -178,7 +179,7 @@ def base_args_for_group(
                 "auth_token": group_args.pop("auth_token", models.get("auth_token")),
             }
         )
-        if group_name == "group_b":
+        if group_name in {"group_b", "group_e"}:
             model_args["device"] = group_args.pop("device", models.get("big_device"))
 
     merged: Dict[str, Any] = {}
