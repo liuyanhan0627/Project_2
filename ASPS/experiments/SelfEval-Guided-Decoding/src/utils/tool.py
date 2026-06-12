@@ -387,21 +387,22 @@ def solve_it(equation, variable):
 def safe_execute(code_string: str, keys=None, use_pot=False, maxtime=5):
     def execute(x):
         try:
-            exec(f'from math import *\n{x}')
-            locals_ = locals()
+            # Keep an explicit exec namespace; Python 3.13 does not reliably
+            # expose exec-created names through locals() inside functions.
+            exec_scope = {}
+            exec(f'from math import *\n{x}', exec_scope)
             if keys is not None:
-                return [locals_.get(k, None) for k in keys]
+                return [exec_scope.get(k, None) for k in keys]
             # PoT
             if use_pot:
-                return locals_.get('ans', None)
+                return exec_scope.get('ans', None)
             # PAL
-            solution = locals_.get('solution', None)
+            solution = exec_scope.get('solution', None)
             if solution is not None: 
                 return solution()
             else:
-                exec('\n'.join([xx[4:] for xx in x.strip().split('\n')[1:-1]]))
-                locals_ = locals()
-                return locals_.get('result', None)
+                exec('\n'.join([xx[4:] for xx in x.strip().split('\n')[1:-1]]), exec_scope)
+                return exec_scope.get('result', None)
         except Exception as e:
             return None
     try:
