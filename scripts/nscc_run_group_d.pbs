@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+#PBS -j oe
+
+set -euo pipefail
+
+cd "${PBS_O_WORKDIR:-$PWD}"
+mkdir -p nscc_logs
+
+RUN_SCRIPT="${RUN_SCRIPT:-scripts/run_group_d_cautious_first100.sh}"
+EXPORT_NAME="${EXPORT_NAME:-$(date +%Y%m%d-%H%M%S)_nscc_group_d}"
+OUTPUT_ROOT="${OUTPUT_ROOT:-outputs/${EXPORT_NAME}}"
+LOG_FILE="nscc_logs/${EXPORT_NAME}.${PBS_JOBID:-manual}.log"
+
+exec > >(tee -a "${LOG_FILE}") 2>&1
+
+echo "=== NSCC ASPS Group D/CNTP job ==="
+echo "started_at: $(date)"
+echo "host: $(hostname)"
+echo "workdir: $(pwd)"
+echo "job_id: ${PBS_JOBID:-manual}"
+echo "run_script: ${RUN_SCRIPT}"
+echo "export_name: ${EXPORT_NAME}"
+echo "output_root: ${OUTPUT_ROOT}"
+
+ENV_FILE="${NSCC_ENV_FILE:-${HOME}/.asps_nscc_env}"
+if [[ -f "${ENV_FILE}" ]]; then
+  # shellcheck disable=SC1090
+  source "${ENV_FILE}"
+fi
+
+if ! type module >/dev/null 2>&1 && [[ -f /opt/cray/pe/modules/3.2.11.6/init/bash ]]; then
+  # shellcheck disable=SC1091
+  source /opt/cray/pe/modules/3.2.11.6/init/bash
+fi
+
+if type module >/dev/null 2>&1; then
+  module purge
+  read -r -a GROUP_D_MODULE_LIST <<< "${GROUP_D_MODULES:-gcc/11.4.0-nscc python/3.12.1-gcc11}"
+  for module_name in "${GROUP_D_MODULE_LIST[@]}"; do
+    module load "${module_name}"
+  done
+  module list
+else
+  echo "Warning: NSCC module command is not available." >&2
+fi
+
+VENV_PATH="${GROUP_D_VENV_PATH:-${HOME}/collmenv-d}"
+TORCH_SITE="${GROUP_D_TORCH_SITE:-/app/apps/pytorch/2.6.0-py3-cu11.8.bk/lib/python3.12/site-packages}"
+
+if [[ ! -f "${VENV_PATH}/bin/activate" ]]; then
+  echo "Group D virtualenv not found at ${VENV_PATH}." >&2
+  echo "Create it first with scripts/nscc_setup_group_d_venv.pbs." >&2
+  exit 1
+fi
+if [[ ! -d "${TORCH_SITE}" ]]; then
+  echo "PyTorch Python 3.12 site-packages not found: ${TORCH_SITE}" >&2
+  echo "Set GROUP_D_TORCH_SITE to the correct NSCC PyTorch 3.12 site-packages path." >&2
+  exit 1
+fi
+
+# shellcheck disable=SC1091
+source "${VENV_PATH}/bin/activate"
+
+export PYTHONUNBUFFERED=1
+export TOKENIZERS_PARALLELISM="${TOKENIZERS_PARALLELISM:-false}"
+export PYTHONPATH="${TORCH_SITE}:${PYTHONPATH:-}"
+export LD_LIBRARY_PATH="${TORCH_SITE}/torch/lib:${LD_LIBRARY_PATH:-}"
+export HF_HOME="${HF_HOME:-${HOME}/.cache/huggingface}"
+export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-${HF_HOME}}"
+export DATAHOME="${DATAHOME:-ASPS/experiments/SelfEval-Guided-Decoding/data}"
+export MATH_FILE="${MATH_FILE:-${DATAHOME}/MATH/test.jsonl}"
+export TRUTHFULQA_FILE="${TRUTHFULQA_FILE:-${DATAHOME}/truthfulqa/TruthfulQA.csv}"
+export BIG_MODEL="${BIG_MODEL:-meta-llama/Meta-Llama-3.1-8B-Instruct}"
+export SMALL_MODEL="${SMALL_MODEL:-meta-llama/Llama-3.2-1B-Instruct}"
+export OUTPUT_ROOT
+export EXPORT_NAME
+
+if [[ -z "${HF_TOKEN:-}" || "${HF_TOKEN}" == "YOUR_HF_TOKEN" ]]; then
+  echo "HF_TOKEN is not set. Put export HF_TOKEN=... in ${ENV_FILE} or export it before qsub -V." >&2
+  exit 2
+fi
+
+echo "python: $(command -v python3)"
+python3 -V
+python3 -m pip --version || true
+if command -v nvidia-smi >/dev/null 2>&1; then
+  nvidia-smi
+fi
+
+python3 - <<'PY'
+import inspect
+import torch
+import transformers
+import tokenizers
+from transformers.generation.utils import GenerationMixin
+
+print("torch", torch.__version__, torch.__file__)
+print("torch_cuda", torch.version.cuda)
+print("torch_cuda_available", torch.cuda.is_available())
+print("transformers", transformers.__version__, transformers.__file__)
+print("tokenizers", tokenizers.__version__)
+
+required_methods = (
+    "_sample_reflect_perplexity",
+    "_sample_reflect_perplexity_same_num_trials",
+    "_sample_reflect_perplexity_negatively_correlated",
+)
+missing = [method for method in required_methods if not hasattr(GenerationMixin, method)]
+generate_source = inspect.getsource(GenerationMixin.generate)
+has_dispatch = "cntp_perplexity" in generate_source and "GenerationMode.CNTP_SAME_NUM_TRIALS" in generate_source
+if missing or not has_dispatch:
+    raise SystemExit(f"CNTP patched transformers check failed; missing={missing}, has_dispatch={has_dispatch}")
+
+print("CNTP patched transformers check OK")
+PY
+
+bash "${RUN_SCRIPT}"
+
+echo "finished_at: $(date)"
+echo "outputs: ${OUTPUT_ROOT}"
+echo "log_file: ${LOG_FILE}"

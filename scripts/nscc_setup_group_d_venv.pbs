@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+#PBS -j oe
+
+set -euo pipefail
+
+cd "${PBS_O_WORKDIR:-$PWD}"
+mkdir -p nscc_logs
+LOG_FILE="nscc_logs/setup_group_d_venv.${PBS_JOBID:-manual}.log"
+exec > >(tee -a "${LOG_FILE}") 2>&1
+
+echo "=== NSCC ASPS Group D/CNTP virtualenv setup ==="
+echo "started_at: $(date)"
+echo "host: $(hostname)"
+echo "workdir: $(pwd)"
+
+ENV_FILE="${NSCC_ENV_FILE:-${HOME}/.asps_nscc_env}"
+if [[ -f "${ENV_FILE}" ]]; then
+  # shellcheck disable=SC1090
+  source "${ENV_FILE}"
+fi
+
+if ! type module >/dev/null 2>&1 && [[ -f /opt/cray/pe/modules/3.2.11.6/init/bash ]]; then
+  # shellcheck disable=SC1091
+  source /opt/cray/pe/modules/3.2.11.6/init/bash
+fi
+
+if type module >/dev/null 2>&1; then
+  module purge
+  read -r -a GROUP_D_MODULE_LIST <<< "${GROUP_D_MODULES:-gcc/11.4.0-nscc python/3.12.1-gcc11}"
+  for module_name in "${GROUP_D_MODULE_LIST[@]}"; do
+    module load "${module_name}"
+  done
+  module list
+else
+  echo "NSCC module command is not available." >&2
+  exit 1
+fi
+
+export PYTHONUNBUFFERED=1
+export PIP_CACHE_DIR="${PIP_CACHE_DIR:-${HOME}/scratch/pip-cache}"
+mkdir -p "${PIP_CACHE_DIR}"
+
+VENV_PATH="${GROUP_D_VENV_PATH:-${HOME}/collmenv-d}"
+TORCH_SITE="${GROUP_D_TORCH_SITE:-/app/apps/pytorch/2.6.0-py3-cu11.8.bk/lib/python3.12/site-packages}"
+
+if [[ ! -d "${TORCH_SITE}" ]]; then
+  echo "PyTorch Python 3.12 site-packages not found: ${TORCH_SITE}" >&2
+  echo "Set GROUP_D_TORCH_SITE to the correct NSCC PyTorch 3.12 site-packages path." >&2
+  exit 1
+fi
+
+export PYTHONPATH="${TORCH_SITE}:${PYTHONPATH:-}"
+export LD_LIBRARY_PATH="${TORCH_SITE}/torch/lib:${LD_LIBRARY_PATH:-}"
+
+python3 -V
+python3 -m pip --version
+
+if [[ ! -f "${VENV_PATH}/bin/activate" ]]; then
+  echo "Creating Group D virtualenv at ${VENV_PATH}"
+  python3 -m venv "${VENV_PATH}"
+else
+  echo "Reusing Group D virtualenv at ${VENV_PATH}"
+fi
+
+# shellcheck disable=SC1091
+source "${VENV_PATH}/bin/activate"
+
+SITE_DIR="$(python - <<'PY'
+import site
+print(site.getsitepackages()[0])
+PY
+)"
+printf '%s\n' "${TORCH_SITE}" > "${SITE_DIR}/nscc-pytorch312.pth"
+
+python -V
+python -m pip --version
+python -m pip install --upgrade pip setuptools wheel
+
+COMMON_PACKAGES=(
+  accelerate
+  filelock
+  func_timeout
+  ipdb
+  jsonlines
+  matplotlib
+  numpy
+  openai==0.28.1
+  packaging
+  pandas
+  python-dateutil
+  pyyaml
+  regex
+  requests
+  safetensors
+  sentencepiece
+  sympy
+  tenacity
+  tqdm
+  "huggingface-hub>=0.23.2,<1.0"
+  "tokenizers>=0.19,<0.20"
+)
+
+python -m pip install --upgrade "${COMMON_PACKAGES[@]}"
+python -m pip install --upgrade --no-deps -e ASPS/custom_transformers_packages/gsm8k_strategyqa
+
+python - <<'PY'
+import inspect
+import importlib
+
+mods = [
+    "torch",
+    "transformers",
+    "tokenizers",
+    "yaml",
+    "pandas",
+    "tqdm",
+    "jsonlines",
+    "regex",
+    "func_timeout",
+    "sympy",
+    "matplotlib",
+    "openai",
+    "accelerate",
+    "sentencepiece",
+]
+
+for name in mods:
+    mod = importlib.import_module(name)
+    print(name, "OK", getattr(mod, "__version__", ""))
+
+import torch
+import transformers
+from transformers.generation.utils import GenerationMixin
+
+print("torch_file", torch.__file__)
+print("torch_cuda", torch.version.cuda)
+print("torch_cuda_available", torch.cuda.is_available())
+print("transformers_file", transformers.__file__)
+
+required_methods = (
+    "_sample_reflect_perplexity",
+    "_sample_reflect_perplexity_same_num_trials",
+    "_sample_reflect_perplexity_negatively_correlated",
+)
+missing = [method for method in required_methods if not hasattr(GenerationMixin, method)]
+generate_source = inspect.getsource(GenerationMixin.generate)
+has_dispatch = "cntp_perplexity" in generate_source and "GenerationMode.CNTP_SAME_NUM_TRIALS" in generate_source
+if missing or not has_dispatch:
+    raise SystemExit(f"CNTP patched transformers check failed; missing={missing}, has_dispatch={has_dispatch}")
+
+print("CNTP patched transformers check OK")
+PY
+
+echo "group_d_venv_path: ${VENV_PATH}"
+echo "torch_site: ${TORCH_SITE}"
+echo "finished_at: $(date)"
+echo "log_file: ${LOG_FILE}"

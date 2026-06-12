@@ -88,10 +88,34 @@ qsub -P personal-e1547010 \
 ```
 
 Group D/CNTP needs the patched ASPS `transformers` package in
-`ASPS/custom_transformers_packages/gsm8k_strategyqa`. On the current NSCC
-Python 3.13 module, that patched package requires an old `tokenizers` version
-that may need a separate Python <= 3.12 environment. Treat Group D as a
-separate setup step unless `INSTALL_CNTP=1` succeeds on your environment.
+`ASPS/custom_transformers_packages/gsm8k_strategyqa`. AutoDL used a Python 3.9
+environment with this patched package, but the standard NSCC `~/collmenv`
+environment uses Python 3.13 and regular Hugging Face `transformers`, which is
+intended for Group A/C and baseline runs. Keep Group D in a separate
+environment so the two setups do not break each other.
+
+Create the Group D environment with Python 3.12:
+
+```bash
+qsub -P personal-e1547010 \
+  -q normal \
+  -N asps_setup_d \
+  -l select=1:ncpus=4:mem=16gb \
+  -l walltime=01:00:00 \
+  scripts/nscc_setup_group_d_venv.pbs
+```
+
+This creates `~/collmenv-d`, uses the NSCC PyTorch 2.6 Python 3.12 package
+directory, pins `tokenizers>=0.19,<0.20`, and installs the patched
+`transformers 4.44.2+cntp` package in editable mode. Check setup progress with:
+
+```bash
+qstat -u "$USER"
+tail -f nscc_logs/setup_group_d_venv.*.log
+```
+
+Only submit Group D after the setup log prints
+`CNTP patched transformers check OK`.
 
 Create a private environment file on NSCC:
 
@@ -147,6 +171,21 @@ Other useful scripts:
 RUN_SCRIPT=scripts/run_group_ac_k2_refine_sweep.sh bash scripts/nscc_submit.sh
 RUN_SCRIPT=scripts/run_group_ac_k2_overnight_mix_sweep.sh bash scripts/nscc_submit.sh
 RUN_SCRIPT=scripts/run_group_ac_ruler_small_overnight.sh bash scripts/nscc_submit.sh
+```
+
+Submit the first Group D/CNTP check with the dedicated Group D environment:
+
+```bash
+PROJECT=personal-e1547010 bash scripts/nscc_submit_group_d.sh
+```
+
+For the mixed paper-D sweep that includes Group D configs, also use the Group D
+runner:
+
+```bash
+PROJECT=personal-e1547010 \
+RUN_SCRIPT=scripts/run_group_ac_paperd_nightly_sweep.sh \
+bash scripts/nscc_submit_group_d.sh
 ```
 
 You can narrow a run by exporting `RUN_CONFIGS` before submitting. Because
