@@ -188,6 +188,24 @@ RUN_SCRIPT=scripts/run_group_ac_paperd_nightly_sweep.sh \
 bash scripts/nscc_submit_group_d.sh
 ```
 
+The short `gdev` queue is limited to 2 hours. For runs that need the 24-hour GPU
+queues, request a walltime above 2 hours and up to 24 hours. The route queue
+will send one-GPU jobs to `g1` and two-GPU jobs to `g2`:
+
+```bash
+PROJECT=personal-e1547010 \
+WALLTIME=24:00:00 \
+RUN_SCRIPT=scripts/run_group_ac_remaining_24h.sh \
+JOB_NAME=asps_ac_24h \
+bash scripts/nscc_submit.sh
+
+PROJECT=personal-e1547010 \
+WALLTIME=24:00:00 \
+RUN_SCRIPT=scripts/run_group_d_cautious_remaining_24h.sh \
+JOB_NAME=asps_d_24h \
+bash scripts/nscc_submit_group_d.sh
+```
+
 You can narrow a run by exporting `RUN_CONFIGS` before submitting. Because
 `scripts/nscc_submit.sh` uses `qsub -V`, PBS receives the variable:
 
