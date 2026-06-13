@@ -65,7 +65,13 @@ echo "records: ${F0_RECORDS_PATH}"
 echo "train_output: ${F1_TRAIN_OUTPUT_DIR}"
 python3 "${TRAINER}" "${TRAIN_ARGS[@]}" 2>&1 | tee "${LOG_DIR}/group_f1_train.log"
 
-export F1_LORA_PATH="${F1_LORA_PATH:-${F1_TRAIN_OUTPUT_DIR}/adapter}"
+if [[ -z "${F1_LORA_PATH:-}" ]]; then
+  F1_LORA_PATH="${F1_TRAIN_OUTPUT_DIR}/adapter"
+fi
+if [[ "${F1_LORA_PATH}" != /* ]]; then
+  F1_LORA_PATH="$(pwd)/${F1_LORA_PATH}"
+fi
+export F1_LORA_PATH
 
 EVAL_ARGS=()
 if [[ "${DRY_RUN}" == "1" ]]; then
