@@ -228,15 +228,16 @@ if __name__ == "__main__":
         for batch_idx in tqdm(range((len(inputs) + args.batch_size - 1) // args.batch_size)):
             batch = inputs[batch_idx * args.batch_size : (batch_idx + 1) * args.batch_size]
             for exp in batch:
+                exp_index = exp["index"]
                 full_prompt, _ = get_prompt_inputs(args.dt_name, args.prompts, exp, use_chatgpt=args.chatgpt)
                 if args.verbal:
                     print("======================")
-                    print(f'Index: {exp["index"]}\nQuestion: {exp.get("question", "")}')
+                    print(f'Index: {exp_index}\nQuestion: {exp.get("question", "")}')
 
                 raw_results = groupc_generation_result(
                     decoder,
                     full_prompt,
-                    distill_metadata={"dataset": args.dt_name, "question_id": index},
+                    distill_metadata={"dataset": args.dt_name, "question_id": exp_index},
                 )
                 results = parse_api_result(raw_results, llama=True, return_prob=False)
 
