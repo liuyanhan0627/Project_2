@@ -42,6 +42,8 @@ def parse_args():
     parser.add_argument("--distill_top_k", default=20, type=int)
     parser.add_argument("--distill_run_id", default="", type=str)
     parser.add_argument("--distill_prefix_max_bytes", default=50000, type=int)
+    parser.add_argument("--small_lora_path", default="", type=str)
+    parser.add_argument("--output_group_label", default="groupC", type=str)
     parser.add_argument("--batch_size", default=1, type=int)
     parser.add_argument("--chatgpt", default=False, action="store_true")
     parser.add_argument(
@@ -105,6 +107,29 @@ def load_model_and_tokenizer(model_name, auth_token, device):
     return model, tokenizer
 
 
+def validate_lora_adapter(adapter_path):
+    if not adapter_path:
+        return
+    if not os.path.isdir(adapter_path):
+        raise FileNotFoundError(f"LoRA adapter path not found: {adapter_path}")
+    try:
+        import peft  # noqa: F401
+    except ImportError as exc:
+        raise RuntimeError("Loading --small_lora_path requires peft. Install it with `pip install peft`.") from exc
+
+
+def apply_lora_adapter(model, adapter_path):
+    if not adapter_path:
+        return model
+    try:
+        from peft import PeftModel
+    except ImportError as exc:
+        raise RuntimeError("Loading --small_lora_path requires peft. Install it with `pip install peft`.") from exc
+    model = PeftModel.from_pretrained(model, adapter_path)
+    model.eval()
+    return model
+
+
 def model_tag(name):
     tail = name.rstrip("/").split("/")[-1]
     return tail.replace("Meta-", "").replace("/", "_")
@@ -117,8 +142,9 @@ def _float_tag(value):
 def make_output_filename(args, dt_string):
     big = model_tag(args.big_model_name)
     small = model_tag(args.small_model_name)
+    group_label = model_tag(args.output_group_label)
     filename = (
-        f"{args.output_dir}/{args.dt_name}_groupC_big{big}_small{small}"
+        f"{args.output_dir}/{args.dt_name}_{group_label}_big{big}_small{small}"
         f"_s{args.start}_e{args.end}_{dt_string}_seed{args.seed}"
         f"_entropy{args.entropy_threshold}_k{args.draft_candidates}"
         f"_draft{args.max_draft_tokens}_fallback{args.max_fallback_tokens}"
@@ -183,10 +209,15 @@ if __name__ == "__main__":
     if args.reverse:
         inputs = inputs[::-1]
 
+    validate_lora_adapter(args.small_lora_path)
+
     print(f"Loading big model on {args.big_device}: {args.big_model_name}")
     big_model, big_tokenizer = load_model_and_tokenizer(args.big_model_name, args.auth_token, args.big_device)
     print(f"Loading small model on {args.small_device}: {args.small_model_name}")
     small_model, small_tokenizer = load_model_and_tokenizer(args.small_model_name, args.auth_token, args.small_device)
+    if args.small_lora_path:
+        print(f"Loading small-model LoRA adapter: {args.small_lora_path}")
+        small_model = apply_lora_adapter(small_model, args.small_lora_path)
     distill_collector = None
     if args.distill_collect:
         validate_shared_tokenizer(big_tokenizer, small_tokenizer)

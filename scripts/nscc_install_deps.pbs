@@ -44,6 +44,7 @@ COMMON_PACKAGES=(
   matplotlib
   openai==0.28.1
   pandas
+  "peft>=0.13.2"
   python-dateutil
   pyyaml
   regex
@@ -83,6 +84,7 @@ mods = [
     "matplotlib",
     "openai",
     "accelerate",
+    "peft",
     "sentencepiece",
 ]
 

@@ -21,6 +21,7 @@ GROUP_SCRIPTS = {
     "group_d": "generate_code_groupd_cautious_llama.py",
     "group_e": "generate_code_groupe_tot_llama.py",
     "group_f0": "generate_code_groupa_llama.py",
+    "group_f1": "generate_code_groupa_llama.py",
 }
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -163,7 +164,7 @@ def base_args_for_group(
             dataset_args[key] = value
 
     model_args: Dict[str, Any] = {}
-    if group_name in {"group_a", "group_c", "group_f0"}:
+    if group_name in {"group_a", "group_c", "group_f0", "group_f1"}:
         model_args.update(
             {
                 "big_model_name": group_args.pop("big_model_name", models.get("big_model")),
