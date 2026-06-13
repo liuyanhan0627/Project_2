@@ -87,6 +87,7 @@ def summarize_jsonl_metrics(result_dir: Path, group: str) -> Dict[str, Any]:
         "group_b": "groupb_metrics",
         "group_d": "groupd_metrics",
         "group_e": "groupe_metrics",
+        "group_f0": "groupa_metrics",
     }.get(group)
     metrics = [record.get(metric_key, {}) for record in records] if metric_key else []
     metrics = [metric for metric in metrics if isinstance(metric, dict)]

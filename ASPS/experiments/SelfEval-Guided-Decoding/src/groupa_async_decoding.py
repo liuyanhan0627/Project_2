@@ -45,12 +45,21 @@ class GroupAAsyncDecoder:
     one batched verification pass and switches by the configured path score.
     """
 
-    def __init__(self, big_model, big_tokenizer, small_model, small_tokenizer, config: GroupADecodingConfig):
+    def __init__(
+        self,
+        big_model,
+        big_tokenizer,
+        small_model,
+        small_tokenizer,
+        config: GroupADecodingConfig,
+        teacher_collector=None,
+    ):
         self.big_model = big_model
         self.big_tokenizer = big_tokenizer
         self.small_model = small_model
         self.small_tokenizer = small_tokenizer
         self.config = config
+        self.teacher_collector = teacher_collector
         self.big_device = next(big_model.parameters()).device
         self.small_device = next(small_model.parameters()).device
         self.big_punctuation_ids = self._punctuation_ids(big_tokenizer)
@@ -138,7 +147,7 @@ class GroupAAsyncDecoder:
         return tokenizer(text, add_special_tokens=False, return_tensors="pt").input_ids.to(device)
 
     @torch.no_grad()
-    def _draft_paths(self, trigger_text: str) -> List[Dict]:
+    def _draft_paths(self, trigger_text: str, distill_record: Optional[Dict] = None) -> List[Dict]:
         candidate_count = max(1, self.config.draft_candidates)
         base = self.small_tokenizer(trigger_text, return_tensors="pt").to(self.small_device)
         input_ids = base.input_ids.repeat(candidate_count, 1)
@@ -146,6 +155,8 @@ class GroupAAsyncDecoder:
         outputs = self.small_model(input_ids=input_ids, attention_mask=attention_mask, use_cache=True)
         past = outputs.past_key_values
         next_logits = outputs.logits[:, -1, :]
+        if self.teacher_collector is not None and distill_record is not None:
+            self.teacher_collector.update_small_distribution(distill_record, next_logits[:1])
         draft_tokens = [[] for _ in range(candidate_count)]
         active = torch.ones(candidate_count, dtype=torch.bool, device=self.small_device)
         eos_id = self.small_tokenizer.eos_token_id
@@ -183,6 +194,8 @@ class GroupAAsyncDecoder:
         for tokens in draft_tokens:
             text = self._decode_text(self.small_tokenizer, tokens)
             paths.append({"text": text, "small_token_ids": tokens})
+        if self.teacher_collector is not None and distill_record is not None:
+            self.teacher_collector.update_draft_paths(distill_record, paths)
         return paths
 
     @torch.no_grad()
@@ -341,13 +354,15 @@ class GroupAAsyncDecoder:
         return any(stop and stop in text for stop in self.config.stop_strings)
 
     @torch.no_grad()
-    def generate(self, prompt_text: str) -> Dict:
+    def generate(self, prompt_text: str, distill_metadata: Optional[Dict] = None) -> Dict:
         encoded = self.big_tokenizer(prompt_text, return_tensors="pt").to(self.big_device)
         input_ids = encoded.input_ids
         prompt_len = input_ids.shape[1]
         outputs = self.big_model(input_ids=input_ids, attention_mask=encoded.attention_mask, use_cache=True)
         past = outputs.past_key_values
         next_logits = outputs.logits[:, -1, :]
+        distill_metadata = distill_metadata or {}
+        distill_records = []
         metrics = {
             "entropy_triggers": 0,
             "draft_calls": 0,
@@ -389,16 +404,37 @@ class GroupAAsyncDecoder:
             trigger_prefix_text = self.big_tokenizer.decode(trigger_prefix_ids[0], skip_special_tokens=True)
             prefix_past = self._clone_cache(past)
             prefix_next_logits = next_logits.clone()
-            draft_future = self.executor.submit(self._draft_paths, trigger_prefix_text)
+            distill_record = None
+            if self.teacher_collector is not None:
+                distill_record = self.teacher_collector.make_trigger_record(
+                    dataset=distill_metadata.get("dataset", ""),
+                    question_id=distill_metadata.get("question_id", ""),
+                    trigger_step=metrics["entropy_triggers"],
+                    prefix_token_ids=trigger_prefix_ids[0].detach().cpu().tolist(),
+                    big_logits=prefix_next_logits,
+                    big_entropy=entropy,
+                )
+                distill_records.append(distill_record)
+            draft_future = self.executor.submit(self._draft_paths, trigger_prefix_text, distill_record)
 
             input_ids, past, next_logits, fallback_tokens = self._fallback_span(input_ids, past, next_logits)
             metrics["fallback_path_lengths"].append(len(fallback_tokens))
             if not draft_future.done():
                 metrics["late_draft_drops"] += 1
                 draft_future.cancel()
+                if self.teacher_collector is not None:
+                    self.teacher_collector.finalize_record(
+                        distill_record,
+                        chosen_source="fallback",
+                        switch_happened=False,
+                        resolution="late_drop",
+                        fallback_token_ids=fallback_tokens,
+                    )
                 continue
 
             drafts = draft_future.result()
+            if self.teacher_collector is not None:
+                self.teacher_collector.update_big_logits_on_small_topk(distill_record, prefix_next_logits)
             candidates = []
             labels = []
             for idx, draft in enumerate(drafts):
@@ -412,6 +448,14 @@ class GroupAAsyncDecoder:
                 candidates.append(fallback_tokens)
                 labels.append("fallback")
             if not candidates:
+                if self.teacher_collector is not None:
+                    self.teacher_collector.finalize_record(
+                        distill_record,
+                        chosen_source="fallback",
+                        switch_happened=False,
+                        resolution="no_candidate",
+                        fallback_token_ids=fallback_tokens,
+                    )
                 continue
 
             avg_logprobs, verify_mode = self._score_candidates(
@@ -438,6 +482,20 @@ class GroupAAsyncDecoder:
                     best_idx = fallback_idx
             best_label = labels[best_idx]
             metrics["accepted_tokens_per_verify"].append(len(candidates[best_idx]))
+            if self.teacher_collector is not None:
+                self.teacher_collector.finalize_record(
+                    distill_record,
+                    chosen_source="fallback" if best_label == "fallback" else "small_draft",
+                    switch_happened=best_label != "fallback",
+                    resolution="verified",
+                    fallback_token_ids=fallback_tokens,
+                    accepted_label=best_label,
+                    candidate_labels=labels,
+                    candidate_avg_logprobs=avg_logprobs,
+                    candidate_length_weights=length_weights,
+                    candidate_weighted_scores=weighted_scores,
+                    verify_mode=verify_mode,
+                )
             if self.config.path_length_weight_alpha > 0 and self.config.path_length_weight_mode != "none":
                 metrics["candidate_base_scores"].append(dict(zip(labels, avg_logprobs)))
                 metrics["candidate_length_weights"].append(dict(zip(labels, length_weights)))
@@ -466,9 +524,12 @@ class GroupAAsyncDecoder:
             tok.replace("▁", " ").replace("<0x0A>", "\n")
             for tok in self.big_tokenizer.convert_ids_to_tokens(gen_ids)
         ]
+        if self.teacher_collector is not None:
+            distill_records = self.teacher_collector.snapshot_records(distill_records)
         return {
             "text": text,
             "token_ids": gen_ids.detach().cpu().tolist(),
             "tokens": tokens,
             "metrics": metrics,
+            "distill_records": distill_records,
         }

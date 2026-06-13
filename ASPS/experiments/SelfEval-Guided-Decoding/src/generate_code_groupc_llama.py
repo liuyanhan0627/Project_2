@@ -5,6 +5,7 @@ from datetime import datetime
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
 
+from distill.teacher_collector import TeacherSignalCollector, validate_shared_tokenizer
 from groupa_async_decoding import GroupAAsyncDecoder, GroupADecodingConfig
 from utils.dataset import jsonlines_load, load_dataset_examples
 from utils.prompt import get_prompt_inputs, get_prompts
@@ -36,6 +37,11 @@ def parse_args():
     )
     parser.add_argument("--switch_score_margin", default=0.0, type=float)
     parser.add_argument("--disable_prefix_cache_verify", default=False, action="store_true")
+    parser.add_argument("--distill_collect", default=False, action="store_true")
+    parser.add_argument("--distill_log_dir", default="", type=str)
+    parser.add_argument("--distill_top_k", default=20, type=int)
+    parser.add_argument("--distill_run_id", default="", type=str)
+    parser.add_argument("--distill_prefix_max_bytes", default=50000, type=int)
     parser.add_argument("--batch_size", default=1, type=int)
     parser.add_argument("--chatgpt", default=False, action="store_true")
     parser.add_argument(
@@ -125,8 +131,8 @@ def make_output_filename(args, dt_string):
     return filename
 
 
-def groupc_generation_result(decoder, context):
-    result = decoder.generate(context)
+def groupc_generation_result(decoder, context, distill_metadata=None):
+    result = decoder.generate(context, distill_metadata=distill_metadata)
     return {
         "choices": [
             {
@@ -138,7 +144,8 @@ def groupc_generation_result(decoder, context):
                 },
                 "groupc_metrics": result["metrics"],
             }
-        ]
+        ],
+        "distill_records": result.get("distill_records", []),
     }
 
 
@@ -180,6 +187,17 @@ if __name__ == "__main__":
     big_model, big_tokenizer = load_model_and_tokenizer(args.big_model_name, args.auth_token, args.big_device)
     print(f"Loading small model on {args.small_device}: {args.small_model_name}")
     small_model, small_tokenizer = load_model_and_tokenizer(args.small_model_name, args.auth_token, args.small_device)
+    distill_collector = None
+    if args.distill_collect:
+        validate_shared_tokenizer(big_tokenizer, small_tokenizer)
+        distill_log_dir = args.distill_log_dir or os.path.join(args.output_dir, "distill_logs")
+        distill_collector = TeacherSignalCollector(
+            log_dir=distill_log_dir,
+            top_k=args.distill_top_k,
+            run_id=args.distill_run_id or dt_string,
+            max_inline_prefix_bytes=args.distill_prefix_max_bytes,
+        )
+        print(f"Distill trigger collection enabled: {distill_collector.records_path}")
 
     decoder_config = GroupADecodingConfig(
         max_new_tokens=args.max_tokens,
@@ -196,7 +214,14 @@ if __name__ == "__main__":
         switch_score_margin=args.switch_score_margin,
         use_prefix_cache_for_verify=not args.disable_prefix_cache_verify,
     )
-    decoder = GroupAAsyncDecoder(big_model, big_tokenizer, small_model, small_tokenizer, decoder_config)
+    decoder = GroupAAsyncDecoder(
+        big_model,
+        big_tokenizer,
+        small_model,
+        small_tokenizer,
+        decoder_config,
+        teacher_collector=distill_collector,
+    )
 
     correct, wrong = 0, 0
     try:
@@ -208,7 +233,11 @@ if __name__ == "__main__":
                     print("======================")
                     print(f'Index: {exp["index"]}\nQuestion: {exp.get("question", "")}')
 
-                raw_results = groupc_generation_result(decoder, full_prompt)
+                raw_results = groupc_generation_result(
+                    decoder,
+                    full_prompt,
+                    distill_metadata={"dataset": args.dt_name, "question_id": index},
+                )
                 results = parse_api_result(raw_results, llama=True, return_prob=False)
 
                 result_counter = Counter()
@@ -226,6 +255,8 @@ if __name__ == "__main__":
                     correct += 1
                 elif score is False:
                     wrong += 1
+                if distill_collector is not None:
+                    distill_collector.write_records(raw_results.get("distill_records", []), final_correct=score)
 
                 exp.update(
                     {

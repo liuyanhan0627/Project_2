@@ -1,0 +1,54 @@
+experiment:
+  name: groupf0_distill_collect_gsm8k_first20
+  output_root: ${OUTPUT_ROOT:-outputs}
+  src_dir: ASPS/experiments/SelfEval-Guided-Decoding/src
+  stop_on_failure: true
+
+runtime:
+  python: python3
+
+env:
+  HF_TOKEN: ${HF_TOKEN:-YOUR_HF_TOKEN}
+
+models:
+  big_model: ${BIG_MODEL:-meta-llama/Meta-Llama-3.1-8B-Instruct}
+  small_model: ${SMALL_MODEL:-meta-llama/Llama-3.2-1B-Instruct}
+  auth_token: ${HF_TOKEN:-YOUR_HF_TOKEN}
+  big_device: cuda:0
+  small_device: cuda:1
+
+metric:
+  name: accuracy
+  mode: max
+
+common_args:
+  batch_size: 1
+  seed: 0
+  max_tokens: 600
+  chatgpt: false
+  verbal: false
+  reverse: false
+
+datasets:
+  - name: gsm8k
+    input_file: ${DATAHOME:-ASPS/experiments/SelfEval-Guided-Decoding/data}/gsm8k_test.jsonl
+    start: 0
+    end: 19
+
+groups:
+  group_f0:
+    enabled: true
+    env:
+      CUDA_VISIBLE_DEVICES: "0,1"
+    args:
+      entropy_threshold: 1.6
+      draft_candidates: 2
+      max_draft_tokens: 20
+      max_fallback_tokens: 32
+      switch_score_margin: 0.001
+      big_temperature: 0.0
+      big_top_p: 1.0
+      small_temperature: 0.5
+      small_top_p: 0.9
+      distill_collect: true
+      distill_top_k: 20
